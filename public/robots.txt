@@ -1,0 +1,5 @@
+# Allow full indexing for Pune Ganpati Darshan
+User-agent: *
+Allow: /
+
+Sitemap: https://ganpatidarshan.pune/sitemap.xml

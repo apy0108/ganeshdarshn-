@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FFF8F2;
+  --surface: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --border: #F0E6DB;
+  --text: #1A0F00;
+  --muted: #7A6254;
+  --accent: #D4520F;
+  --accent-bg: #FFF0E6;
+  --green: #166534;
+  --green-bg: #DCFCE7;
+  --amber: #92400E;
+  --amber-bg: #FEF3C7;
+  --red: #991B1B;
+  --red-bg: #FEE2E2;
+  --grey: #6B7280;
+  --grey-bg: #F3F4F6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #120800;
+    --surface: #1E1008;
+    --card-bg: #271608;
+    --border: #3D2010;
+    --text: #FFF0E6;
+    --muted: #A08070;
+    --accent: #F07030;
+    --accent-bg: #331505;
+  }
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-baloo), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars while keeping scrollability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* MapLibre navigation control overrides */
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 44px !important;
+  height: 44px !important;
+  background-color: #FFFFFF !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: #FFF0E6 !important;
+}
+
+/* Minimum accessible tap target */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+}
