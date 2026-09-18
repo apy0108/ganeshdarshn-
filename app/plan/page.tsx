@@ -597,7 +597,7 @@ function PlanPageContent() {
 
       {/* Sticky Bottom Google Maps Button */}
       {routeStops.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] p-3 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] max-w-md mx-auto">
+        <div className="fixed bottom-0 inset-x-0 z-50 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] p-3.5 pb-[max(env(safe-area-inset-bottom,0px)+12px,16px)] max-w-md mx-auto shadow-2xl">
           <a
             href={googleMapsUrl}
             target="_blank"

@@ -22,6 +22,11 @@ const NAV_ITEMS: NavItem[] = [
 export default function Nav() {
   const pathname = usePathname();
 
+  // Hide bottom navigation on dedicated wizard and tour navigation pages
+  if (pathname === "/start" || pathname === "/plan" || (pathname && pathname.startsWith("/routes/"))) {
+    return null;
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] pb-[env(safe-area-inset-bottom,0px)]">
       <div className="max-w-md mx-auto flex items-center justify-around h-[60px] px-1">

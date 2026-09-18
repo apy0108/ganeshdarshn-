@@ -339,7 +339,7 @@ export default function RouteBuilderWizard() {
       </div>
 
       {/* Sticky Bottom Next / Build Button */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] p-3 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] max-w-md mx-auto">
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] p-3.5 pb-[max(env(safe-area-inset-bottom,0px)+12px,16px)] max-w-md mx-auto shadow-2xl">
         {step === 1 ? (
           <button
             type="button"

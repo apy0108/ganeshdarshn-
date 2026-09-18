@@ -22,7 +22,6 @@ import { LiveCrowd } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
 import MandalCard from "@/components/MandalCard";
 import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
-import { MAHAPRASAD_LIST } from "@/lib/mahaprasad";
 
 // Festival Day counter calculation (Festival: Sep 27 - Oct 8, 12 days)
 function getFestivalDayInfo() {
@@ -62,8 +61,14 @@ function getFestivalDayInfo() {
 }
 
 export default function HomePage() {
-  const festivalInfo = useMemo(() => getFestivalDayInfo(), []);
+  const [mounted, setMounted] = useState(false);
+  const [festivalInfo, setFestivalInfo] = useState(() => getFestivalDayInfo());
   const [crowdData, setCrowdData] = useState<Record<string, LiveCrowd>>({});
+
+  useEffect(() => {
+    setMounted(true);
+    setFestivalInfo(getFestivalDayInfo());
+  }, []);
 
   useEffect(() => {
     // Fetch initial state from /api/crowd
@@ -116,7 +121,7 @@ export default function HomePage() {
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] font-baloo font-bold text-[12px] border border-orange-200">
           <Calendar size={13} />
-          <span>{festivalInfo.banner}</span>
+          <span suppressHydrationWarning>{festivalInfo.banner}</span>
         </div>
 
         <div className="text-[13px] font-marathi font-semibold text-[var(--muted)]">
@@ -306,68 +311,6 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
-      </section>
-
-      {/* MAHAPRASAD SECTION */}
-      <section className="px-4 py-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[20px] font-extrabold font-baloo text-[var(--text)] leading-tight flex items-center gap-2">
-              <Utensils size={18} className="text-[var(--accent)]" />
-              Mahaprasad
-            </h2>
-            <p className="text-xs font-marathi text-[var(--muted)]">
-              महाप्रसाद व अन्नछत्र माहिती
-            </p>
-          </div>
-        </div>
-
-        {/* Mahaprasad List */}
-        <div className="space-y-2.5">
-          {MAHAPRASAD_LIST.map((item) => (
-            <div
-              key={item.id}
-              className="p-3.5 rounded-[18px] bg-[var(--surface)] border border-[var(--border)] shadow-sm space-y-2"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-extrabold font-baloo text-[var(--text)]">
-                    {item.mandalName}
-                  </h3>
-                  <div className="text-[11px] font-marathi text-[var(--muted)]">
-                    {item.mandalNameMarathi} • {item.area}
-                  </div>
-                </div>
-
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}&travelmode=walking`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-bg)] text-[var(--accent)] text-xs font-extrabold font-baloo hover:bg-orange-100 active:scale-95 transition-all flex-shrink-0"
-                >
-                  <Navigation size={11} /> Directions
-                </a>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs font-bold font-baloo text-amber-900 bg-amber-50/80 px-2.5 py-1 rounded-[10px] border border-amber-200/60">
-                <span>🕒 {item.timeRange}</span>
-                <span>•</span>
-                <span className="truncate">{item.frequency}</span>
-              </div>
-
-              {item.itemDescription && (
-                <p className="text-[11px] font-baloo text-[var(--muted)] leading-snug">
-                  {item.itemDescription}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Disclaimer */}
-        <p className="text-[11px] font-baloo text-[var(--muted)] italic pt-1 text-center">
-          "As announced by the mandals. Mahaprasad ends when it ends — this is not a live view."
-        </p>
       </section>
 
       {/* Famous Mandals Section */}
