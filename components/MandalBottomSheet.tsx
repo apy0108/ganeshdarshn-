@@ -66,8 +66,8 @@ export default function MandalBottomSheet({
           {/* Header Row */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <CrowdBadge status={status} size="md" />
-              {crowd?.waitMinutes ? (
+              <CrowdBadge status={status} isEstimated={crowd?.isEstimated} size="md" />
+              {crowd?.waitMinutes && !crowd.isEstimated ? (
                 <span className="text-xs font-bold text-[var(--muted)]">
                   ~{crowd.waitMinutes} min wait
                 </span>

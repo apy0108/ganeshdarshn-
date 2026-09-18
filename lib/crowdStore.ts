@@ -245,10 +245,10 @@ export async function recalculateMandalState(mandalId: string): Promise<MandalCr
   if (activeReports.length === 0) {
     const fallbackState: MandalCrowdState = {
       mandalId,
-      status: getTimeOfDayEstimate(),
+      status: "none",
       lastReportAt: 0,
       reportCount: 0,
-      isEstimated: true,
+      isEstimated: false,
     };
     inMemoryState[mandalId] = fallbackState;
     return fallbackState;

@@ -91,7 +91,7 @@ export default function MandalCard({
         {/* Absolute badge on top right for Explore view */}
         {badgePosition === "photo-top-right" && (
           <div className="absolute top-2.5 right-2.5 z-10">
-            <CrowdBadge status={status} size="sm" className="bg-white/90 backdrop-blur-sm shadow-sm" />
+            <CrowdBadge status={status} isEstimated={crowd?.isEstimated} size="sm" className="bg-white/90 backdrop-blur-sm shadow-sm" />
           </div>
         )}
       </div>
@@ -101,7 +101,7 @@ export default function MandalCard({
         {/* Crowd badge (colored pill) at TOP of content when badgePosition is content-top */}
         {badgePosition === "content-top" && (
           <div>
-            <CrowdBadge status={status} size="md" />
+            <CrowdBadge status={status} isEstimated={crowd?.isEstimated} size="md" />
           </div>
         )}
 

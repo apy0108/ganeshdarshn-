@@ -31,6 +31,7 @@ interface MapProps {
   footCorridors?: FootCorridor[];
   // Metro support
   showMetro?: boolean;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 export default function Map({
@@ -53,12 +54,14 @@ export default function Map({
   showFootCorridors = false,
   footCorridors = [],
   showMetro = true,
+  userLocation = null,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<{ [id: string]: maplibregl.Marker }>({});
   const parkingMarkersRef = useRef<{ [id: number]: maplibregl.Marker }>({});
   const metroMarkersRef = useRef<{ [id: string]: maplibregl.Marker }>({});
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   // 1. Initialize MapLibre
   useEffect(() => {
@@ -187,6 +190,17 @@ export default function Map({
           },
         });
       }
+      // Zoom event listener for progressive label disclosure
+      const handleZoom = () => {
+        if (!mapContainer.current) return;
+        if (map.getZoom() >= 14.5) {
+          mapContainer.current.classList.add("map-zoomed-in");
+        } else {
+          mapContainer.current.classList.remove("map-zoomed-in");
+        }
+      };
+      map.on("zoom", handleZoom);
+      handleZoom();
     });
 
     mapInstance.current = map;
@@ -299,44 +313,61 @@ export default function Map({
       const color = (CROWD_CONFIG[status] || CROWD_CONFIG.none).color;
       const isSelected = selectedMandalId === mandal.id;
 
-      const el = document.createElement("div");
-      el.className = "mandal-marker-pin group cursor-pointer select-none";
+      // Wrapper container for Pin + Progressive Label
+      const wrapper = document.createElement("div");
+      wrapper.className = `mandal-marker-wrapper group relative flex flex-col items-center cursor-pointer select-none ${
+        isSelected ? "is-selected z-30" : "z-10"
+      }`;
+
+      // Pin Dot
+      const pin = document.createElement("div");
+      pin.className = "mandal-marker-pin flex items-center justify-center transition-transform group-hover:scale-110";
 
       const pinSize = showNumbers ? 26 : isSelected ? 24 : 16;
-      el.style.width = `${pinSize}px`;
-      el.style.height = `${pinSize}px`;
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = showNumbers ? "var(--accent, #D4520F)" : color;
-      el.style.border = "2.5px solid #FFFFFF";
-      el.style.boxShadow = isSelected
-        ? `0 0 0 3px ${color}, 0 4px 12px rgba(0,0,0,0.5)`
+      pin.style.width = `${pinSize}px`;
+      pin.style.height = `${pinSize}px`;
+      pin.style.borderRadius = "50%";
+      pin.style.backgroundColor = showNumbers ? "var(--accent, #D4520F)" : color;
+      pin.style.border = "2.5px solid #FFFFFF";
+      pin.style.boxShadow = isSelected
+        ? `0 0 0 3px ${color}, 0 4px 14px rgba(0,0,0,0.6)`
         : "0 2px 8px rgba(0,0,0,0.4)";
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.cursor = "pointer";
-      el.style.pointerEvents = "auto";
-      el.style.transition = "transform 0.15s ease, box-shadow 0.15s ease";
-      el.setAttribute("role", "button");
-      el.setAttribute("aria-label", mandal.name);
 
       if (showNumbers) {
-        el.style.color = "#FFFFFF";
-        el.style.fontSize = "12px";
-        el.style.fontWeight = "800";
-        el.style.fontFamily = "var(--font-baloo), sans-serif";
-        el.innerText = `${index + 1}`;
+        pin.style.color = "#FFFFFF";
+        pin.style.fontSize = "12px";
+        pin.style.fontWeight = "800";
+        pin.style.fontFamily = "var(--font-baloo), sans-serif";
+        pin.innerText = `${index + 1}`;
       }
+
+      wrapper.appendChild(pin);
+
+      // Label (Progressive disclosure: visible on zoom >= 14.5, hover, or selected)
+      const label = document.createElement("div");
+      label.className = `mandal-marker-label pointer-events-none mt-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold font-baloo whitespace-nowrap border shadow-md transition-all ${
+        isSelected
+          ? "!flex bg-orange-600 text-white border-white/40 shadow-lg scale-105"
+          : "bg-[#160E08]/90 text-amber-100 border-white/20"
+      }`;
+      // Short friendly display name
+      const shortName = mandal.name.replace(/^(Shree|Shrimant|The)\s+/i, "");
+      label.innerText = shortName;
+
+      wrapper.appendChild(label);
+
+      wrapper.setAttribute("role", "button");
+      wrapper.setAttribute("aria-label", mandal.name);
 
       const handleClick = (e: Event) => {
         e.stopPropagation();
         if (onSelectMandal) onSelectMandal(mandal);
       };
 
-      el.addEventListener("click", handleClick);
-      el.addEventListener("touchend", handleClick);
+      wrapper.addEventListener("click", handleClick);
+      wrapper.addEventListener("touchend", handleClick);
 
-      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+      const marker = new maplibregl.Marker({ element: wrapper, anchor: "center" })
         .setLngLat([mandal.lng, mandal.lat])
         .addTo(map);
 
@@ -435,6 +466,42 @@ export default function Map({
     });
   }, [showMetro]);
 
+  // Render / Update User Live GPS Location Marker (Pulsing Blue Pin)
+  useEffect(() => {
+    const map = mapInstance.current;
+    if (!map) return;
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+
+    if (!userLocation) return;
+
+    const el = document.createElement("div");
+    el.className = "user-location-marker relative flex items-center justify-center";
+    el.style.width = "22px";
+    el.style.height = "22px";
+
+    // Outer radar ring
+    const pulseRing = document.createElement("div");
+    pulseRing.className = "absolute inset-0 rounded-full bg-blue-500/40 animate-ping";
+    el.appendChild(pulseRing);
+
+    // Inner dot
+    const dot = document.createElement("div");
+    dot.className = "relative w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md";
+    el.appendChild(dot);
+
+    el.setAttribute("title", "You are here");
+
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+      .setLngLat([userLocation.lng, userLocation.lat])
+      .addTo(map);
+
+    userMarkerRef.current = marker;
+  }, [userLocation]);
+
   // Pan / fit to bounds
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -458,12 +525,19 @@ export default function Map({
           duration: 800,
         });
       }
+    } else if (userLocation && !selectedMandalId && !selectedParkingId && !showNumbers) {
+      mapInstance.current.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: Math.max(mapInstance.current.getZoom(), 15),
+        essential: true,
+        duration: 800,
+      });
     } else if (mandals.length > 1 && showNumbers) {
       const bounds = new maplibregl.LngLatBounds();
       mandals.forEach((m) => bounds.extend([m.lng, m.lat]));
       mapInstance.current.fitBounds(bounds, { padding: 40, maxZoom: 16 });
     }
-  }, [selectedMandalId, selectedParkingId, mandals, parkingSpots, showNumbers]);
+  }, [selectedMandalId, selectedParkingId, mandals, parkingSpots, showNumbers, userLocation]);
 
   return (
     <div className={`relative ${className}`}>

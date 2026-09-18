@@ -6,6 +6,7 @@ import { CrowdStatus } from "@/lib/types";
 interface CrowdBadgeProps {
   status?: CrowdStatus;
   size?: "sm" | "md" | "lg";
+  isEstimated?: boolean;
   className?: string;
 }
 
@@ -37,7 +38,7 @@ export const CROWD_CONFIG: Record<
     symbol: "~",
   },
   heavy: {
-    label: "! Long wait",
+    label: "! Heavy queue",
     bg: "#FEE2E2",
     text: "#991B1B",
     border: "#FECACA",
@@ -45,21 +46,40 @@ export const CROWD_CONFIG: Record<
     symbol: "!",
   },
   none: {
-    label: "? Unknown",
+    label: "⚪ No recent data",
     bg: "#F3F4F6",
     text: "#6B7280",
     border: "#E5E7EB",
     color: "#6B7280",
-    symbol: "?",
+    symbol: "⚪",
   },
 };
 
 export default function CrowdBadge({
   status = "none",
   size = "md",
+  isEstimated = false,
   className = "",
 }: CrowdBadgeProps) {
   const config = CROWD_CONFIG[status] || CROWD_CONFIG.none;
+
+  if (isEstimated && status !== "none") {
+    const sizeStyle =
+      size === "sm"
+        ? "text-[11px] py-1 px-2.5"
+        : size === "lg"
+        ? "text-base py-2 px-4 font-extrabold"
+        : "text-[13px] py-1.5 px-3 font-bold";
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full leading-none tracking-tight select-none border border-amber-300 bg-amber-50 text-amber-900 ${sizeStyle} ${className}`}
+      >
+        <span>🟡</span>
+        <span>Estimated</span>
+      </span>
+    );
+  }
 
   const sizeStyle =
     size === "sm"

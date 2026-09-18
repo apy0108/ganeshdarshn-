@@ -74,3 +74,14 @@ body {
   min-width: 44px;
   min-height: 44px;
 }
+
+/* Map marker progressive disclosure */
+.mandal-marker-label {
+  display: none;
+}
+.map-zoomed-in .mandal-marker-label,
+.mandal-marker-wrapper:hover .mandal-marker-label,
+.mandal-marker-wrapper.is-selected .mandal-marker-label {
+  display: flex;
+}
+

@@ -19,6 +19,7 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 });
 
 import AppProviders from "@/components/AppProviders";
+import SideNav from "@/components/SideNav";
 
 export const metadata: Metadata = {
   title: "Pune Ganpati Darshan — Live Queues, Routes & Map",
@@ -50,6 +51,7 @@ export default function RootLayout({
         <AppProviders>
           <main className="min-h-screen pb-24">{children}</main>
         </AppProviders>
+        <SideNav />
         <Nav />
       </body>
     </html>

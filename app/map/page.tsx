@@ -11,6 +11,7 @@ import { subscribeToLiveCrowd } from "@/lib/firebase";
 import MandalBottomSheet from "@/components/MandalBottomSheet";
 import { PARKING_SPOTS, ROAD_CLOSURES, FOOT_CORRIDORS, ParkingSpot } from "@/lib/parking";
 import { useDwellSignal } from "@/hooks/useDwellSignal";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -29,6 +30,7 @@ function MapViewContent() {
 
   // Passive dwell signal tracking
   useDwellSignal();
+  const locationState = useUserLocation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>(
@@ -221,24 +223,59 @@ function MapViewContent() {
         </div>
       </div>
 
-      {/* Floating Live Indicator & Traffic Advisory pill */}
-      <div className="absolute top-[125px] left-3 z-20 pointer-events-none space-y-1.5">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm text-white text-[11px] font-bold font-baloo shadow">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Live Queue Status Active</span>
+      {/* Floating Live Indicator, Traffic Advisory pill & Prominent Location Button */}
+      <div className="absolute top-[125px] left-3 right-3 z-20 pointer-events-none flex items-start justify-between gap-2">
+        <div className="space-y-1.5 pointer-events-auto">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-sm text-white text-[11px] font-bold font-baloo shadow">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live Queue Status Active</span>
+          </div>
+
+          {showTrafficLayers && (
+            <div>
+              <Link
+                href="/parking"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-700/90 hover:bg-blue-800 backdrop-blur-sm text-white text-[11px] font-extrabold font-baloo shadow transition-colors"
+              >
+                <span>🅿️ 23 Lots · 13 Closures</span>
+                <ExternalLink size={11} />
+              </Link>
+            </div>
+          )}
         </div>
 
-        {showTrafficLayers && (
-          <div>
-            <Link
-              href="/parking"
-              className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-700/90 hover:bg-blue-800 backdrop-blur-sm text-white text-[11px] font-extrabold font-baloo shadow transition-colors"
+        {/* Prominent Use Current Location Control */}
+        <div className="pointer-events-auto flex flex-col items-end gap-1">
+          {locationState.status === "granted" && locationState.location ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-700 text-white text-xs font-extrabold font-baloo shadow-lg border border-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              <span>📍 Location detected</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={locationState.requestLocation}
+              disabled={locationState.status === "requesting"}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/95 text-[var(--accent)] hover:bg-white text-xs font-extrabold font-baloo shadow-lg border border-[var(--accent)] backdrop-blur-sm active:scale-95 transition-all"
             >
-              <span>🅿️ 23 Lots · 13 Closures</span>
-              <ExternalLink size={11} />
-            </Link>
-          </div>
-        )}
+              <Navigation
+                size={13}
+                className={locationState.status === "requesting" ? "animate-spin" : ""}
+              />
+              <span>
+                {locationState.status === "requesting"
+                  ? "📍 Detecting..."
+                  : "📍 Use Current Location"}
+              </span>
+            </button>
+          )}
+
+          {locationState.errorMessage && (
+            <div className="max-w-[260px] p-2 rounded-[12px] bg-black/90 text-amber-200 text-[11px] font-baloo shadow-xl border border-amber-500/40 backdrop-blur-md">
+              {locationState.errorMessage}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Full-Screen Map Component */}
@@ -266,6 +303,7 @@ function MapViewContent() {
         roadClosures={ROAD_CLOSURES}
         showFootCorridors={showTrafficLayers}
         footCorridors={FOOT_CORRIDORS}
+        userLocation={locationState.location}
       />
 
       {/* Selected Parking Spot Card Drawer */}

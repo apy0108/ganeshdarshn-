@@ -19,7 +19,7 @@ import { getCuratedRouteById, getRouteTime, formatMinutes } from "@/lib/curatedR
 import { getMandalById, haversine } from "@/lib/mandals";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
-import { CROWD_CONFIG } from "@/components/CrowdBadge";
+import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
 import { RouteStop, buildGoogleMapsURL } from "@/lib/routeBuilder";
 
 const Map = dynamic(() => import("@/components/Map"), {
@@ -256,8 +256,7 @@ export default function RouteDetailPage() {
         <div className="space-y-2">
           {routeStops.map((stop, index) => {
             const crowd = crowdData[stop.mandal.id];
-            const st: CrowdStatus = crowd?.status || "short";
-            const cfg = CROWD_CONFIG[st] || CROWD_CONFIG.short;
+            const st: CrowdStatus = crowd?.status || "none";
 
             return (
               <Link
@@ -286,15 +285,12 @@ export default function RouteDetailPage() {
 
                 {/* Crowd Badge */}
                 <div className="flex flex-col items-end flex-shrink-0 space-y-0.5">
-                  <span
-                    className="px-2 py-0.5 rounded-full text-[10px] font-extrabold font-baloo"
-                    style={{ backgroundColor: cfg.bg, color: cfg.text }}
-                  >
-                    {cfg.label.replace(/^([✓~!]\s|\?\s)/, "")}
-                  </span>
-                  <span className="text-[10px] font-baloo text-[var(--muted)]">
-                    ~{stop.queueMinutes}m queue
-                  </span>
+                  <CrowdBadge status={st} isEstimated={crowd?.isEstimated} size="sm" />
+                  {crowd?.waitMinutes && !crowd.isEstimated ? (
+                    <span className="text-[10px] font-baloo text-[var(--muted)]">
+                      ~{crowd.waitMinutes}m wait
+                    </span>
+                  ) : null}
                 </div>
               </Link>
             );

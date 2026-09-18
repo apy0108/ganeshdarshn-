@@ -23,7 +23,7 @@ import {
 import { MANDALS, getMandalById, getNearby, haversine } from "@/lib/mandals";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
-import { CROWD_CONFIG } from "@/components/CrowdBadge";
+import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
 import CrowdReportButtons from "@/components/CrowdReportButtons";
 import WaitTimeButtons from "@/components/WaitTimeButtons";
 import GanpatiIcon from "@/components/GanpatiIcon";
@@ -171,9 +171,9 @@ export default function MandalDetailPage() {
   };
 
   const currentCrowd = crowdData[mandal.id];
-  const currentStatus: CrowdStatus = currentCrowd?.status || "short";
-  const currentConfig = CROWD_CONFIG[currentStatus] || CROWD_CONFIG.short;
-  const isEstimated = currentCrowd?.isEstimated ?? true;
+  const currentStatus: CrowdStatus = currentCrowd?.status || "none";
+  const currentConfig = CROWD_CONFIG[currentStatus] || CROWD_CONFIG.none;
+  const isEstimated = currentCrowd?.isEstimated ?? false;
   const waitMinutes = currentCrowd?.waitMinutes;
 
   const handleShare = async () => {
@@ -501,18 +501,33 @@ export default function MandalDetailPage() {
             )}
           </div>
 
-          {/* Tags as Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-[var(--border)]">
-            {mandal.categories.map((c) => (
-              <span
-                key={c}
-                className="px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[11px] font-extrabold font-baloo text-[var(--muted)] capitalize"
-              >
-                #{c}
-              </span>
-            ))}
-            <span className="px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[11px] font-extrabold font-baloo text-[var(--muted)]">
-              #pune-darshan
+          {/* Categories & Tags as Clean Chips */}
+          <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-[var(--border)]">
+            {mandal.categories.map((c) => {
+              const label =
+                c === "manache"
+                  ? "Manache Paach"
+                  : c === "famous"
+                  ? "Famous"
+                  : c === "historic"
+                  ? "Historic"
+                  : c === "neighbourhood"
+                  ? "Neighbourhood"
+                  : c === "temple"
+                  ? "Temple"
+                  : String(c).replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+
+              return (
+                <span
+                  key={c}
+                  className="px-3 py-1 rounded-[10px] bg-[var(--accent-bg)] text-[var(--accent)] border border-orange-200/80 text-xs font-extrabold font-baloo"
+                >
+                  {label}
+                </span>
+              );
+            })}
+            <span className="px-3 py-1 rounded-[10px] bg-[var(--surface)] text-[var(--muted)] border border-[var(--border)] text-xs font-bold font-baloo">
+              Pune Darshan
             </span>
           </div>
         </div>
@@ -534,8 +549,7 @@ export default function MandalDetailPage() {
                 )
               );
               const nearbyCrowd = crowdData[nearby.id];
-              const st: CrowdStatus = nearbyCrowd?.status || "short";
-              const cfg = CROWD_CONFIG[st] || CROWD_CONFIG.short;
+              const st: CrowdStatus = nearbyCrowd?.status || "none";
 
               return (
                 <Link
@@ -543,7 +557,7 @@ export default function MandalDetailPage() {
                   href={`/ganpati/${nearby.id}`}
                   className="flex items-center justify-between p-3 rounded-[16px] bg-[var(--surface)] border border-[var(--border)] active:scale-[0.99] transition-transform"
                 >
-                  <div className="space-y-0.5 pr-2">
+                  <div className="space-y-0.5 pr-2 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold font-baloo bg-[var(--bg)] text-[var(--muted)] capitalize">
                         {nearby.categories[0]}
@@ -557,14 +571,8 @@ export default function MandalDetailPage() {
                     </p>
                   </div>
 
-                  <div className="flex-shrink-0 flex items-center gap-1.5">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: cfg.color }}
-                    />
-                    <span className="text-[11px] font-extrabold font-baloo" style={{ color: cfg.text }}>
-                      {cfg.label.replace(/^([✓~!]\s|\?\s)/, "")}
-                    </span>
+                  <div className="flex-shrink-0">
+                    <CrowdBadge status={st} isEstimated={nearbyCrowd?.isEstimated} size="sm" />
                   </div>
                 </Link>
               );

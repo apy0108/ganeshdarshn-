@@ -28,8 +28,9 @@ import {
   buildGoogleMapsURL,
   splitIntoLegs,
 } from "@/lib/routeBuilder";
-import { CROWD_CONFIG } from "@/components/CrowdBadge";
-import { PUNE_METRO_STATIONS, getNearestMetroStation } from "@/lib/metro";
+import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
+import { PUNE_METRO_STATIONS, getMetroTransitPlan } from "@/lib/metro";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -49,7 +50,7 @@ function PlanPageContent() {
   const [crowdData, setCrowdData] = useState<Record<string, LiveCrowd>>({});
   const [dwellStyle, setDwellStyle] = useState<"full" | "mixed" | "quick">("full");
   const [transport, setTransport] = useState<"walk" | "metro" | "two-wheeler">("walk");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const locationState = useUserLocation();
   const [activeLegIndex, setActiveLegIndex] = useState(0);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [shareToast, setShareToast] = useState(false);
@@ -77,7 +78,6 @@ function PlanPageContent() {
       const meta = JSON.parse(localStorage.getItem("pg.plan_meta") || "{}");
 
       if (meta.transport) setTransport(meta.transport);
-      if (meta.userLocation) setUserLocation(meta.userLocation);
 
       if (savedPlan && savedPlan.length > 0) {
         setMandalIds(savedPlan);
@@ -140,24 +140,22 @@ function PlanPageContent() {
     return () => clearInterval(interval);
   }, []);
 
-  // Use my location toggle
+  // Handle location request
   const handleUseLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation(loc);
-        handleOptimizeWithOrigin(loc);
-      },
-      () => {},
-      { timeout: 8000 }
-    );
+    locationState.requestLocation();
   };
+
+  // Auto re-optimize if location is obtained
+  useEffect(() => {
+    if (locationState.location) {
+      handleOptimizeWithOrigin(locationState.location);
+    }
+  }, [locationState.location]);
 
   // Build RouteStops list from current mandalIds
   const routeStops: RouteStop[] = useMemo(() => {
     const stops: RouteStop[] = [];
-    const origin = userLocation || { lat: 18.5204, lng: 73.8567 };
+    const origin = locationState.location || { lat: 18.5204, lng: 73.8567 };
 
     let prevPoint = origin;
     mandalIds.forEach((id) => {
@@ -192,7 +190,7 @@ function PlanPageContent() {
     });
 
     return stops;
-  }, [mandalIds, crowdData, dwellStyle, transport, userLocation]);
+  }, [mandalIds, crowdData, dwellStyle, transport, locationState.location]);
 
   // Total summary statistics
   const totalStats = useMemo(() => {
@@ -223,7 +221,7 @@ function PlanPageContent() {
         budgetMinutes: 360,
         preferences: ["surprise"],
         transport,
-        startLocation: originLoc || userLocation || undefined,
+        startLocation: originLoc || locationState.location || undefined,
         crowdStates: crowdData,
         dwellStyle,
       });
@@ -248,11 +246,11 @@ function PlanPageContent() {
 
   // Split into Google Maps legs if > 10 stops
   const legs = useMemo(() => {
-    return splitIntoLegs(routeStops, Boolean(userLocation));
-  }, [routeStops, userLocation]);
+    return splitIntoLegs(routeStops, Boolean(locationState.location));
+  }, [routeStops, locationState.location]);
 
   const activeStops = legs[activeLegIndex] || routeStops;
-  const googleMapsUrl = buildGoogleMapsURL(userLocation, activeStops);
+  const googleMapsUrl = buildGoogleMapsURL(locationState.location, activeStops);
 
   const clearPlan = () => {
     localStorage.setItem("pg.plan", "[]");
@@ -285,7 +283,7 @@ function PlanPageContent() {
             Your Darshan
           </h1>
           <p className="text-xs font-baloo text-[var(--muted)]">
-            {totalStats.stopCount} stops · from {userLocation ? "Your location" : "City centre"}
+            {totalStats.stopCount} stops · from {locationState.location ? "Your location" : "City centre"}
           </p>
         </div>
 
@@ -330,35 +328,50 @@ function PlanPageContent() {
         </div>
       </div>
 
-      {/* Metro Station Advice Card if transport is metro */}
+      {/* Metro Multi-Leg Journey Guide if transport is metro */}
       {transport === "metro" && routeStops.length > 0 && (
         <div className="px-4 pt-3">
           {(() => {
-            const startLoc = userLocation || { lat: 18.5204, lng: 73.8567 };
-            const startMetro = getNearestMetroStation(startLoc);
-            const firstMandalMetro = getNearestMetroStation({
-              lat: routeStops[0].mandal.lat,
-              lng: routeStops[0].mandal.lng,
-            });
+            const startLoc = locationState.location || { lat: 18.5204, lng: 73.8567 };
+            const transitPlan = getMetroTransitPlan(startLoc, routeStops[0].mandal);
 
             return (
-              <div className="p-3.5 rounded-[18px] bg-purple-50 border border-purple-200 text-purple-950 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-purple-700 text-white font-baloo font-black text-[10px] flex items-center justify-center">
-                    M
-                  </span>
-                  <span className="text-xs font-extrabold font-baloo uppercase tracking-wider text-purple-900">
-                    Pune Metro Transit Guide
+              <div className="p-4 rounded-[18px] bg-purple-50 border-2 border-purple-200 text-purple-950 space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-purple-700 text-white font-baloo font-black text-xs flex items-center justify-center">
+                      M
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-extrabold font-baloo uppercase tracking-wider text-purple-900">
+                        Metro Transit Itinerary
+                      </h3>
+                      <p className="text-[11px] text-purple-700 font-baloo">
+                        {locationState.location ? "From your GPS location" : "From Pune Central"} → {routeStops[0].mandal.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="px-2.5 py-1 rounded-full bg-purple-200 text-purple-900 text-xs font-black font-baloo">
+                    ~{transitPlan.totalTransitMinutes} min
                   </span>
                 </div>
-                <div className="space-y-1 text-xs font-baloo text-purple-900/90 pl-7">
-                  <p>
-                    <strong>Start Station:</strong> {startMetro.station.name} (~{startMetro.distanceM}m away)
-                  </p>
-                  <p>
-                    <strong>Exit Station for Stop #1 ({routeStops[0].mandal.name}):</strong>{" "}
-                    {firstMandalMetro.station.name} (~{firstMandalMetro.distanceM}m walk to mandal).
-                  </p>
+
+                <div className="space-y-2 pt-1 border-t border-purple-200 text-xs font-baloo text-purple-900">
+                  {transitPlan.steps.map((step, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5">
+                      <span className="text-base flex-shrink-0">{step.icon}</span>
+                      <div className="flex-1 space-y-0.5">
+                        <div className="font-extrabold text-purple-950 flex items-center justify-between">
+                          <span>{step.title}</span>
+                          <span className="text-[11px] text-purple-700">~{step.durationMinutes}m</span>
+                        </div>
+                        <p className="text-[11px] text-purple-900/80 leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
@@ -397,7 +410,7 @@ function PlanPageContent() {
           </div>
 
           <div className="text-center pt-2 border-t border-[var(--border)] text-[11px] font-baloo text-[var(--muted)]">
-            ~{totalStats.walkMinutes}m walking + ~{totalStats.dwellMinutes}m darshan & queues from live reports
+            ~{totalStats.walkMinutes}m transit + ~{totalStats.dwellMinutes}m darshan & queues from live reports
           </div>
         </div>
       </div>
@@ -458,26 +471,49 @@ function PlanPageContent() {
             </div>
           </div>
 
-          {/* Starting point and optimization buttons */}
-          <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleUseLocation}
-              className="inline-flex items-center gap-1.5 text-xs font-extrabold font-baloo text-[var(--accent)] hover:underline"
-            >
-              <Navigation size={13} />
-              {userLocation ? "From current GPS" : "Start from my location"}
-            </button>
+          {/* Prominent Starting Point Location Section */}
+          <div className="pt-2 border-t border-[var(--border)] space-y-2">
+            <div className="flex items-center justify-between">
+              {locationState.status === "granted" && locationState.location ? (
+                <div className="inline-flex items-center gap-1.5 text-xs font-extrabold font-baloo text-emerald-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>📍 Location detected</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleUseLocation}
+                  disabled={locationState.status === "requesting"}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[var(--accent-bg)] text-[var(--accent)] border border-[var(--accent)] text-xs font-extrabold font-baloo hover:bg-orange-100 transition-colors"
+                >
+                  <Navigation
+                    size={13}
+                    className={locationState.status === "requesting" ? "animate-spin" : ""}
+                  />
+                  <span>
+                    {locationState.status === "requesting"
+                      ? "📍 Detecting..."
+                      : "📍 Use Current Location"}
+                  </span>
+                </button>
+              )}
 
-            <button
-              type="button"
-              disabled={isOptimizing}
-              onClick={() => handleOptimizeWithOrigin()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] text-xs font-extrabold font-baloo hover:bg-orange-100 transition-colors"
-            >
-              <Zap size={13} />
-              {isOptimizing ? "Optimizing..." : "Optimize order"}
-            </button>
+              <button
+                type="button"
+                disabled={isOptimizing}
+                onClick={() => handleOptimizeWithOrigin()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] text-xs font-extrabold font-baloo hover:bg-orange-100 transition-colors"
+              >
+                <Zap size={13} />
+                {isOptimizing ? "Optimizing..." : "Optimize order"}
+              </button>
+            </div>
+
+            {locationState.errorMessage && (
+              <p className="text-xs text-amber-800 bg-amber-50 p-2 rounded-[10px] border border-amber-200 font-baloo">
+                {locationState.errorMessage}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -531,8 +567,7 @@ function PlanPageContent() {
           <div className="space-y-2.5">
             {routeStops.map((stop, index) => {
               const crowd = crowdData[stop.mandal.id];
-              const st: CrowdStatus = crowd?.status || "short";
-              const cfg = CROWD_CONFIG[st] || CROWD_CONFIG.short;
+              const st: CrowdStatus = crowd?.status || "none";
 
               return (
                 <Link
@@ -564,15 +599,12 @@ function PlanPageContent() {
 
                   {/* Queue Wait Time & Status */}
                   <div className="flex flex-col items-end flex-shrink-0 space-y-0.5">
-                    <span
-                      className="px-2 py-0.5 rounded-full text-[10px] font-extrabold font-baloo"
-                      style={{ backgroundColor: cfg.bg, color: cfg.text }}
-                    >
-                      {cfg.label.replace(/^([✓~!]\s|\?\s)/, "")}
-                    </span>
-                    <span className="text-[10px] font-baloo text-[var(--muted)]">
-                      ~{stop.queueMinutes}m queue
-                    </span>
+                    <CrowdBadge status={st} isEstimated={crowd?.isEstimated} size="sm" />
+                    {crowd?.waitMinutes && !crowd.isEstimated ? (
+                      <span className="text-[10px] font-baloo text-[var(--muted)]">
+                        ~{crowd.waitMinutes}m wait
+                      </span>
+                    ) : null}
                   </div>
                 </Link>
               );

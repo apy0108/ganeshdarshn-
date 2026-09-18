@@ -9,14 +9,23 @@ export default function PWAInstallBanner() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // Increment visit count
+    if (typeof window === "undefined") return;
+
+    // Do NOT show banner if already running in standalone PWA mode
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+
+    if (isStandalone) return;
+
     try {
+      const dismissed = localStorage.getItem("pg.pwa_dismissed");
+      if (dismissed) return;
+
       const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10) + 1;
       localStorage.setItem("pg.visits", visits.toString());
 
-      const dismissed = localStorage.getItem("pg.pwa_dismissed");
-
-      if (visits >= 2 && !dismissed) {
+      if (visits >= 2) {
         setShowBanner(true);
       }
     } catch {}
@@ -24,7 +33,11 @@ export default function PWAInstallBanner() {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowBanner(true);
+      const dismissed = localStorage.getItem("pg.pwa_dismissed");
+      const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10);
+      if (!dismissed && visits >= 2) {
+        setShowBanner(true);
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -35,6 +48,10 @@ export default function PWAInstallBanner() {
   }, []);
 
   const handleInstall = async () => {
+    try {
+      localStorage.setItem("pg.pwa_dismissed", "true");
+    } catch {}
+
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
@@ -43,7 +60,6 @@ export default function PWAInstallBanner() {
       }
       setDeferredPrompt(null);
     } else {
-      // Fallback hint for iOS / Android without prompt API
       alert("Tap your browser's share or menu button (⋮ / ⎙) and select 'Add to Home Screen'!");
       setShowBanner(false);
     }

@@ -12,71 +12,33 @@ import {
   AlertTriangle,
   Users,
   Navigation,
-  Utensils,
   BookOpen,
   Info,
-  Car,
+  Search,
+  X,
+  Menu,
 } from "lucide-react";
 import { MANDALS, CURATED_ROUTES } from "@/lib/mandals";
 import { LiveCrowd } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
 import MandalCard from "@/components/MandalCard";
 import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
-
-// Festival Day counter calculation (Festival: Sep 27 - Oct 8, 12 days)
-function getFestivalDayInfo() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const festivalStart = new Date(year, 8, 27); // Sep 27
-  const festivalEnd = new Date(year, 9, 8, 23, 59, 59); // Oct 8
-
-  const startMs = festivalStart.getTime();
-  const endMs = festivalEnd.getTime();
-  const currentMs = now.getTime();
-
-  if (currentMs < startMs) {
-    const diffDays = Math.ceil((startMs - currentMs) / (1000 * 60 * 60 * 24));
-    return {
-      pill: `Festival in ${diffDays} day${diffDays > 1 ? "s" : ""}`,
-      banner: `Festival begins in ${diffDays} days (Sep 27 – Oct 8)`,
-      status: "upcoming",
-    };
-  } else if (currentMs <= endMs) {
-    const dayNumber = Math.min(
-      12,
-      Math.max(1, Math.floor((currentMs - startMs) / (1000 * 60 * 60 * 24)) + 1)
-    );
-    return {
-      pill: `Day ${dayNumber} of 12`,
-      banner: `Day ${dayNumber} of 12 · Pune Ganeshotsav Active`,
-      status: "active",
-    };
-  } else {
-    return {
-      pill: "Festival Ended",
-      banner: "Festival has ended for this year.",
-      status: "ended",
-    };
-  }
-}
+import { getFestivalDayInfo } from "@/lib/festival";
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [festivalInfo, setFestivalInfo] = useState(() => getFestivalDayInfo());
   const [crowdData, setCrowdData] = useState<Record<string, LiveCrowd>>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     setMounted(true);
     setFestivalInfo(getFestivalDayInfo());
-  }, []);
 
-  useEffect(() => {
-    // Fetch initial state from /api/crowd
+    // Fetch live crowd state
     fetch("/api/crowd")
       .then((res) => res.json())
-      .then((data) => {
-        setCrowdData((prev) => ({ ...prev, ...data }));
-      })
+      .then((data) => setCrowdData((prev) => ({ ...prev, ...data })))
       .catch(() => {});
 
     // Realtime Firebase subscription
@@ -85,6 +47,20 @@ export default function HomePage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Filter search results across all mandals
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+
+    return MANDALS.filter((m) => {
+      const nameMatch = m.name.toLowerCase().includes(q);
+      const marathiMatch = m.nameMarathi.includes(q);
+      const areaMatch = m.area.toLowerCase().includes(q);
+      const catMatch = m.categories.some((c) => c.toLowerCase().includes(q));
+      return nameMatch || marathiMatch || areaMatch || catMatch;
+    }).slice(0, 6);
+  }, [searchQuery]);
 
   // Shortest queues: top 3 mandals with 'short' status, most recently reported
   const shortestQueues = useMemo(() => {
@@ -117,15 +93,26 @@ export default function HomePage() {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[var(--bg)] pb-28 font-sans">
-      {/* Top Bar with Festival Countdown / Status Banner */}
+      {/* Top Bar with Festival Countdown / Status Banner & Menu */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] font-baloo font-bold text-[12px] border border-orange-200">
           <Calendar size={13} />
           <span suppressHydrationWarning>{festivalInfo.banner}</span>
         </div>
 
-        <div className="text-[13px] font-marathi font-semibold text-[var(--muted)]">
-          पुणे गणेशोत्सव
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-marathi font-semibold text-[var(--muted)]">
+            पुणे गणेशोत्सव
+          </span>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-sidenav"))}
+            className="w-8 h-8 rounded-full bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] flex items-center justify-center hover:bg-[var(--accent-bg)] active:scale-95 transition-all shadow-sm"
+            aria-label="Open Menu"
+            title="Menu"
+          >
+            <Menu size={16} />
+          </button>
         </div>
       </div>
 
@@ -143,8 +130,77 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* Homepage Quick Search Bar */}
+        <div className="relative pt-1">
+          <div className="relative flex items-center">
+            <Search size={18} className="absolute left-3.5 text-[var(--muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="🔍 Search Ganpati, area or mandal"
+              className="w-full h-[50px] pl-10 pr-10 rounded-[14px] bg-[var(--surface)] border-[1.5px] border-[var(--border)] text-[var(--text)] font-baloo text-sm placeholder:text-[var(--muted)] placeholder:font-medium focus:outline-none focus:border-[var(--accent)] shadow-sm transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 p-1 rounded-full text-[var(--muted)] hover:text-[var(--text)]"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Instant Search Results Dropdown */}
+          {searchQuery.trim() && (
+            <div className="absolute top-full inset-x-0 mt-1.5 z-30 max-h-80 overflow-y-auto rounded-[18px] bg-[var(--surface)] border-[1.5px] border-[var(--border)] shadow-2xl p-2 space-y-1">
+              {searchResults.length > 0 ? (
+                <>
+                  {searchResults.map((m) => (
+                    <Link
+                      key={m.id}
+                      href={`/ganpati/${m.id}`}
+                      onClick={() => setSearchQuery("")}
+                      className="flex items-center justify-between p-2.5 rounded-[12px] hover:bg-[var(--accent-bg)] active:scale-[0.99] transition-all"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="text-sm font-extrabold font-baloo text-[var(--text)] leading-tight">
+                          {m.name}
+                        </div>
+                        <div className="text-xs font-marathi text-[var(--muted)]">
+                          {m.nameMarathi} • {m.area}
+                        </div>
+                      </div>
+                      <CrowdBadge
+                        status={crowdData[m.id]?.status}
+                        isEstimated={crowdData[m.id]?.isEstimated}
+                        size="sm"
+                      />
+                    </Link>
+                  ))}
+                  <div className="pt-2 border-t border-[var(--border)] px-2 pb-1 text-center">
+                    <Link
+                      href={`/explore?q=${encodeURIComponent(searchQuery)}`}
+                      onClick={() => setSearchQuery("")}
+                      className="text-xs font-extrabold font-baloo text-[var(--accent)] hover:underline"
+                    >
+                      View all results in Explore →
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <div className="py-6 text-center text-xs font-baloo text-[var(--muted)]">
+                  No mandals found matching "{searchQuery}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Two BIG Action Buttons */}
-        <div className="space-y-2.5 pt-1">
+        <div className="space-y-2.5 pt-2">
           <Link
             href="/map"
             className="w-full h-[56px] rounded-[16px] bg-[var(--accent)] text-white text-[18px] font-extrabold font-baloo flex items-center justify-center gap-2.5 active:scale-[0.98] transition-transform shadow-md"
@@ -157,35 +213,6 @@ export default function HomePage() {
             className="w-full h-[56px] rounded-[16px] bg-[var(--surface)] border-2 border-[var(--accent)] text-[var(--accent)] text-[18px] font-extrabold font-baloo flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-sm"
           >
             <span>✦</span> Build My Route
-          </Link>
-        </div>
-
-        {/* Quick Traffic & How to Use Grid */}
-        <div className="grid grid-cols-2 gap-2.5 pt-1">
-          <Link
-            href="/parking"
-            className="p-3 rounded-[16px] bg-blue-50/90 border border-blue-200 active:scale-[0.98] transition-transform space-y-1"
-          >
-            <div className="flex items-center gap-1.5 text-blue-900 font-extrabold font-baloo text-xs">
-              <Car size={14} className="text-blue-700" />
-              <span>Parking & Traffic</span>
-            </div>
-            <p className="text-[10px] font-baloo text-blue-700/80 leading-tight">
-              23 lots · 13 road closures
-            </p>
-          </Link>
-
-          <Link
-            href="/how-to-use"
-            className="p-3 rounded-[16px] bg-orange-50/90 border border-orange-200 active:scale-[0.98] transition-transform space-y-1"
-          >
-            <div className="flex items-center gap-1.5 text-orange-900 font-extrabold font-baloo text-xs">
-              <BookOpen size={14} className="text-[var(--accent)]" />
-              <span>How to Use</span>
-            </div>
-            <p className="text-[10px] font-baloo text-orange-700/80 leading-tight">
-              5-step darshan guide
-            </p>
           </Link>
         </div>
       </section>
