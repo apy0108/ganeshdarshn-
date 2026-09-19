@@ -31,6 +31,13 @@ import { formatMinutes } from "@/lib/curatedRoutes";
 
 // Open Google Maps directions for a single mandal
 function openDirections(mandal: Mandal) {
+  if (mandal.lat === null || mandal.lng === null) {
+    const url = new URL("https://www.google.com/maps/search/");
+    url.searchParams.set("api", "1");
+    url.searchParams.set("query", `${mandal.name}, ${mandal.area}, Pune`);
+    window.open(url.toString(), "_blank", "noopener");
+    return;
+  }
   const url = new URL("https://www.google.com/maps/dir/");
   url.searchParams.set("api", "1");
   url.searchParams.set("destination", `${mandal.lat},${mandal.lng}`);
@@ -543,12 +550,15 @@ export default function MandalDetailPage() {
 
           <div className="space-y-2">
             {nearbyList.map((nearby) => {
-              const meters = Math.round(
-                haversine(
-                  { lat: mandal.lat, lng: mandal.lng },
-                  { lat: nearby.lat, lng: nearby.lng }
-                )
-              );
+              const meters =
+                mandal.lat !== null && mandal.lng !== null && nearby.lat !== null && nearby.lng !== null
+                  ? Math.round(
+                      haversine(
+                        { lat: mandal.lat, lng: mandal.lng },
+                        { lat: nearby.lat, lng: nearby.lng }
+                      )
+                    )
+                  : null;
               const nearbyCrowd = crowdData[nearby.id];
               const st: CrowdStatus = nearbyCrowd?.status || "none";
 
@@ -568,7 +578,7 @@ export default function MandalDetailPage() {
                       </h3>
                     </div>
                     <p className="text-[11px] text-[var(--muted)] font-baloo">
-                      {nearby.area} • ~{meters} m walk
+                      {nearby.area}{meters !== null ? ` • ~${meters} m walk` : ""}
                     </p>
                   </div>
 

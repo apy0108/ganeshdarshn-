@@ -24,7 +24,10 @@ export default function MandalBottomSheet({
   if (!mandal) return null;
 
   const status: CrowdStatus = crowd?.status || "none";
-  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mandal.lat},${mandal.lng}`;
+  const googleMapsUrl =
+    mandal.lat !== null && mandal.lng !== null
+      ? `https://www.google.com/maps/dir/?api=1&destination=${mandal.lat},${mandal.lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mandal.name + ", " + mandal.area + ", Pune")}`;
   const initialLetter = mandal.name.replace(/^(Shree|Shrimant|The)\s+/i, "")[0] || "ग";
 
   return (

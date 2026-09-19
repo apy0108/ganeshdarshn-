@@ -45,7 +45,10 @@ export default function CrowdReportButtons({
     }
   }, [mandal]);
 
-  const eligibility = getReportEligibility(gpsState, { lat: mandal.lat, lng: mandal.lng });
+  const eligibility =
+    mandal.lat !== null && mandal.lng !== null
+      ? getReportEligibility(gpsState, { lat: mandal.lat, lng: mandal.lng })
+      : { kind: "no_location" as const, atMandal: false };
   const atMandal = eligibility.atMandal;
 
   // Check cooldown on mount

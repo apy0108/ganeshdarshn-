@@ -90,8 +90,10 @@ export default function RouteDetailPage() {
     let distM = 200;
     if (index > 0) {
       const prev = mandalStops[index - 1];
-      distM = Math.round(haversine({ lat: prev.lat, lng: prev.lng }, { lat: mandal.lat, lng: mandal.lng }));
-      walkMins = Math.max(1, Math.round(distM / 1.2 / 60));
+      if (prev.lat !== null && prev.lng !== null && mandal.lat !== null && mandal.lng !== null) {
+        distM = Math.round(haversine({ lat: prev.lat, lng: prev.lng }, { lat: mandal.lat, lng: mandal.lng }));
+        walkMins = Math.max(1, Math.round(distM / 1.2 / 60));
+      }
     }
 
     const crowd = crowdData[mandal.id];
@@ -171,7 +173,11 @@ export default function RouteDetailPage() {
         <Map
           mandals={mandalStops}
           showNumbers={true}
-          center={mandalStops[0] ? [mandalStops[0].lng, mandalStops[0].lat] : [73.8567, 18.5204]}
+          center={
+            mandalStops[0] && mandalStops[0].lng !== null && mandalStops[0].lat !== null
+              ? [mandalStops[0].lng, mandalStops[0].lat]
+              : [73.8567, 18.5204]
+          }
           zoom={14.5}
           className="w-full h-full"
         />

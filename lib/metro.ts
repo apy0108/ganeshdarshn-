@@ -174,16 +174,14 @@ export function getMetroTransitPlan(
   origin: { lat: number; lng: number },
   destinationMandal: Mandal
 ): MetroTransitPlan {
+  const destCoords =
+    destinationMandal.lat !== null && destinationMandal.lng !== null
+      ? { lat: destinationMandal.lat, lng: destinationMandal.lng }
+      : origin;
   const startMetro = getNearestMetroStation(origin);
-  const destMetro = getNearestMetroStation({
-    lat: destinationMandal.lat,
-    lng: destinationMandal.lng,
-  });
+  const destMetro = getNearestMetroStation(destCoords);
 
-  const directWalkMeters = haversine(origin, {
-    lat: destinationMandal.lat,
-    lng: destinationMandal.lng,
-  });
+  const directWalkMeters = haversine(origin, destCoords);
 
   const isSameStation = startMetro.station.id === destMetro.station.id;
   const isDirectWalk = isSameStation && directWalkMeters < 800;

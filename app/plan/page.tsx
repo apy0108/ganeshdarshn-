@@ -163,7 +163,10 @@ function PlanPageContent() {
       const mandal = getMandalById(id);
       if (!mandal) return;
 
-      const meters = haversine(prevPoint, { lat: mandal.lat, lng: mandal.lng });
+      const meters =
+        mandal.lat !== null && mandal.lng !== null
+          ? haversine(prevPoint, { lat: mandal.lat, lng: mandal.lng })
+          : 500;
       const mult = transport === "two-wheeler" ? 0.45 : transport === "metro" ? 0.7 : 1.0;
       const walkMins = Math.max(1, Math.round((meters / 1.2 / 60) * mult));
 
@@ -187,7 +190,9 @@ function PlanPageContent() {
         distanceMeters: Math.round(meters),
       });
 
-      prevPoint = { lat: mandal.lat, lng: mandal.lng };
+      if (mandal.lat !== null && mandal.lng !== null) {
+        prevPoint = { lat: mandal.lat, lng: mandal.lng };
+      }
     });
 
     return stops;
@@ -316,7 +321,7 @@ function PlanPageContent() {
           mandals={routeStops.map((s) => s.mandal)}
           showNumbers={true}
           center={
-            routeStops[0]
+            routeStops[0] && routeStops[0].mandal.lng !== null && routeStops[0].mandal.lat !== null
               ? [routeStops[0].mandal.lng, routeStops[0].mandal.lat]
               : [73.8567, 18.5204]
           }

@@ -295,9 +295,9 @@ export default function ExplorePage() {
             const crowdInfo = CROWD_DOT_MAP[status] || CROWD_DOT_MAP.none;
             const isSaved = savedIds.includes(mandal.id);
 
-            // Compute distance in meters/km if userLocation is known
+            // Compute distance in meters/km if userLocation is known and mandal has coordinates
             let distanceStr = "";
-            if (userLocation) {
+            if (userLocation && mandal.lat !== null && mandal.lng !== null) {
               const meters = haversine(userLocation, {
                 lat: mandal.lat,
                 lng: mandal.lng,

@@ -22,6 +22,8 @@ import CrowdBadge from "@/components/CrowdBadge";
 import { getFestivalDayInfo } from "@/lib/festival";
 import { useLanguage } from "@/context/LanguageContext";
 
+import HomeHeroCarousel from "@/components/HomeHeroCarousel";
+
 interface ToastState {
   show: boolean;
   message: string;
@@ -173,7 +175,7 @@ export default function HomePage() {
       </div>
 
       {/* Hero Section */}
-      <section className="px-4 py-5 space-y-4">
+      <section className="px-4 py-3 space-y-4">
         <div className="space-y-1">
           <p className="text-sm font-marathi text-[var(--muted)] font-medium">
             पुण्याचा गणपती
@@ -186,87 +188,20 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Homepage Quick Search Bar */}
-        <div className="relative pt-1">
-          <div className="relative flex items-center">
-            <Search size={18} className="absolute left-3.5 text-[var(--muted)] pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("search_placeholder")}
-              className="w-full h-[50px] pl-10 pr-10 rounded-[14px] bg-[var(--surface)] border-[1.5px] border-[var(--border)] text-[var(--text)] font-baloo text-sm placeholder:text-[var(--muted)] placeholder:font-medium focus:outline-none focus:border-[var(--accent)] shadow-sm transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 p-1 rounded-full text-[var(--muted)] hover:text-[var(--text)]"
-                aria-label="Clear search"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
+        {/* New Ganpati Hero Carousel with Integrated Search */}
+        <HomeHeroCarousel
+          mandals={MANDALS}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchResults={searchResults}
+          onClearSearch={() => setSearchQuery("")}
+        />
 
-          {/* Instant Search Results Dropdown */}
-          {searchQuery.trim() && (
-            <div className="absolute top-full inset-x-0 mt-1.5 z-30 max-h-80 overflow-y-auto rounded-[18px] bg-[var(--surface)] border-[1.5px] border-[var(--border)] shadow-2xl p-2 space-y-1">
-              {searchResults.length > 0 ? (
-                <>
-                  {searchResults.map((m) => (
-                    <Link
-                      key={m.id}
-                      href={`/ganpati/${m.id}`}
-                      onClick={() => setSearchQuery("")}
-                      className="flex items-center justify-between p-2.5 rounded-[12px] hover:bg-[var(--accent-bg)] active:scale-[0.99] transition-all"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="text-sm font-extrabold font-baloo text-[var(--text)] leading-tight">
-                          {m.name}
-                        </div>
-                        <div className="text-xs font-marathi text-[var(--muted)]">
-                          {m.nameMarathi} • {m.area}
-                        </div>
-                      </div>
-                      <CrowdBadge
-                        status={crowdData[m.id]?.status}
-                        isEstimated={crowdData[m.id]?.isEstimated}
-                        size="sm"
-                      />
-                    </Link>
-                  ))}
-                  <div className="pt-2 border-t border-[var(--border)] px-2 pb-1 text-center">
-                    <Link
-                      href={`/explore?q=${encodeURIComponent(searchQuery)}`}
-                      onClick={() => setSearchQuery("")}
-                      className="text-xs font-extrabold font-baloo text-[var(--accent)] hover:underline"
-                    >
-                      {t("view_all_explore")}
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <div className="py-6 text-center text-xs font-baloo text-[var(--muted)]">
-                  {t("no_results")} "{searchQuery}"
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Two BIG Action Buttons */}
-        <div className="space-y-2.5 pt-2">
-          <Link
-            href="/map"
-            className="w-full h-[56px] rounded-[16px] bg-[var(--accent)] text-white text-[18px] font-extrabold font-baloo flex items-center justify-center gap-2.5 active:scale-[0.98] transition-transform shadow-md"
-          >
-            <span>🗺</span> {t("open_map")}
-          </Link>
-
+        {/* Plan Your Darshan Action Button */}
+        <div className="pt-0.5">
           <Link
             href="/start"
-            className="w-full h-[56px] rounded-[16px] bg-[var(--surface)] border-2 border-[var(--accent)] text-[var(--accent)] text-[18px] font-extrabold font-baloo flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-sm"
+            className="w-full h-[54px] sm:h-[56px] rounded-[18px] bg-[var(--surface)] border-2 border-[var(--accent)] text-[var(--accent)] text-[18px] font-extrabold font-baloo flex items-center justify-center gap-2 active:scale-[0.98] hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-all shadow-sm"
           >
             <span>🙏</span> {t("plan_darshan")}
           </Link>

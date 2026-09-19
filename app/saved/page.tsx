@@ -65,8 +65,10 @@ export default function SavedPage() {
     let legWalk = 4;
     if (i > 0) {
       const prev = planMandals[i - 1];
-      const d = haversine({ lat: prev.lat, lng: prev.lng }, { lat: mandal.lat, lng: mandal.lng });
-      legWalk = Math.max(1, Math.round(d / 1.2 / 60));
+      if (prev.lat !== null && prev.lng !== null && mandal.lat !== null && mandal.lng !== null) {
+        const d = haversine({ lat: prev.lat, lng: prev.lng }, { lat: mandal.lat, lng: mandal.lng });
+        legWalk = Math.max(1, Math.round(d / 1.2 / 60));
+      }
     }
     const crowd = crowdData[mandal.id];
     let queue = 10;

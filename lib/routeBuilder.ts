@@ -110,8 +110,9 @@ export async function buildRoute(params: BuildRouteParams): Promise<BuiltRouteRe
     candidates = MANDALS.slice(0, 8);
   }
 
-  // 2. Fetch or compute distance matrix
-  const points = [origin, ...candidates.map((m) => ({ lat: m.lat, lng: m.lng }))];
+  // 2. Fetch or compute distance matrix (filter out any candidate without coordinates)
+  candidates = candidates.filter((m) => m.lat !== null && m.lng !== null);
+  const points = [origin, ...candidates.map((m) => ({ lat: m.lat as number, lng: m.lng as number }))];
   const matrixSeconds = await getWalkingMatrix(points);
 
   // 3. Greedy TSP solver with budget limit
@@ -212,7 +213,8 @@ export function buildGoogleMapsURL(
   userLocation: { lat: number; lng: number } | null,
   stops: RouteStop[]
 ): string {
-  if (stops.length === 0) return "https://www.google.com/maps";
+  const validStops = stops.filter((s) => s.mandal.lat !== null && s.mandal.lng !== null);
+  if (validStops.length === 0) return "https://www.google.com/maps";
 
   const url = new URL("https://www.google.com/maps/dir/");
   url.searchParams.set("api", "1");
@@ -221,12 +223,12 @@ export function buildGoogleMapsURL(
   if (userLocation) {
     url.searchParams.set("origin", `${userLocation.lat},${userLocation.lng}`);
   } else {
-    const first = stops[0].mandal;
+    const first = validStops[0].mandal;
     url.searchParams.set("origin", `${first.lat},${first.lng}`);
   }
 
   // Destination = last stop
-  const last = stops[stops.length - 1].mandal;
+  const last = validStops[validStops.length - 1].mandal;
   url.searchParams.set("destination", `${last.lat},${last.lng}`);
   if (last.googlePlaceId) {
     url.searchParams.set("destination_place_id", last.googlePlaceId);
@@ -234,7 +236,7 @@ export function buildGoogleMapsURL(
 
   // Waypoints = middle stops (Google Maps caps at 10)
   const hasUserLoc = Boolean(userLocation);
-  const middleStops = hasUserLoc ? stops.slice(0, -1) : stops.slice(1, -1);
+  const middleStops = hasUserLoc ? validStops.slice(0, -1) : validStops.slice(1, -1);
   const waypoints = middleStops.slice(0, 9);
 
   if (waypoints.length > 0) {

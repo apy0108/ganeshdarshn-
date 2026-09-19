@@ -14,14 +14,15 @@ export interface DwellZone {
 export type DwellState = "passing" | "lingering" | "queueing";
 
 export function buildDwellZones(mandals: Mandal[] = MANDALS): DwellZone[] {
-  return mandals.map((mandal) => {
+  const validMandals = mandals.filter((m) => m.lat !== null && m.lng !== null);
+  return validMandals.map((mandal) => {
     // Find nearest neighbour distance
-    const distances = mandals
+    const distances = validMandals
       .filter((m) => m.id !== mandal.id)
       .map((m) =>
         haversine(
-          { lat: mandal.lat, lng: mandal.lng },
-          { lat: m.lat, lng: m.lng }
+          { lat: mandal.lat as number, lng: mandal.lng as number },
+          { lat: m.lat as number, lng: m.lng as number }
         )
       );
     const nearest = distances.length > 0 ? Math.min(...distances) : 100;
@@ -34,8 +35,8 @@ export function buildDwellZones(mandals: Mandal[] = MANDALS): DwellZone[] {
 
     return {
       mandalId: mandal.id,
-      lat: mandal.lat,
-      lng: mandal.lng,
+      lat: mandal.lat as number,
+      lng: mandal.lng as number,
       radiusM: Math.round(radius),
       crossingS: Math.round(crossingS),
       lingeringS: Math.round(crossingS * 1.5),

@@ -62,6 +62,13 @@ export function validateReportLocation(
     return { valid: false, reason: "Mandal not found." };
   }
 
+  if (mandal.lat === null || mandal.lng === null) {
+    return {
+      valid: false,
+      reason: "Location coordinates for this mandal are not currently available.",
+    };
+  }
+
   // Check GPS accuracy if provided
   const accuracy = coords.accuracyM ?? 50;
   if (accuracy > MAX_GPS_ACCURACY_METRES) {

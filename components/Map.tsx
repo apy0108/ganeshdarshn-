@@ -215,9 +215,9 @@ export default function Map({
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
-
-    const shouldDraw = (showRouteLine || showNumbers) && mandals.length > 1;
-    const coords = shouldDraw ? mandals.map((m) => [m.lng, m.lat]) : [];
+    const validMandals = mandals.filter((m) => m.lat !== null && m.lng !== null);
+    const shouldDraw = (showRouteLine || showNumbers) && validMandals.length > 1;
+    const coords = shouldDraw ? validMandals.map((m) => [m.lng as number, m.lat as number]) : [];
 
     const updateSource = () => {
       const src = map.getSource("route-line-source") as maplibregl.GeoJSONSource;
@@ -308,6 +308,8 @@ export default function Map({
     markersRef.current = {};
 
     mandals.forEach((mandal, index) => {
+      if (mandal.lat === null || mandal.lng === null) return;
+
       const crowd = crowdData[mandal.id];
       const status: CrowdStatus = crowd?.status || "none";
       const color = (CROWD_CONFIG[status] || CROWD_CONFIG.none).color;
@@ -507,7 +509,7 @@ export default function Map({
     if (!mapInstance.current) return;
     if (selectedMandalId) {
       const targetMandal = mandals.find((m) => m.id === selectedMandalId);
-      if (targetMandal) {
+      if (targetMandal && targetMandal.lat !== null && targetMandal.lng !== null) {
         mapInstance.current.flyTo({
           center: [targetMandal.lng, targetMandal.lat],
           zoom: Math.max(mapInstance.current.getZoom(), 15),
@@ -534,8 +536,16 @@ export default function Map({
       });
     } else if (mandals.length > 1 && showNumbers) {
       const bounds = new maplibregl.LngLatBounds();
-      mandals.forEach((m) => bounds.extend([m.lng, m.lat]));
-      mapInstance.current.fitBounds(bounds, { padding: 40, maxZoom: 16 });
+      let hasValidCoords = false;
+      mandals.forEach((m) => {
+        if (m.lat !== null && m.lng !== null) {
+          bounds.extend([m.lng, m.lat]);
+          hasValidCoords = true;
+        }
+      });
+      if (hasValidCoords && !bounds.isEmpty()) {
+        mapInstance.current.fitBounds(bounds, { padding: 40, maxZoom: 16 });
+      }
     }
   }, [selectedMandalId, selectedParkingId, mandals, parkingSpots, showNumbers, userLocation]);
 
