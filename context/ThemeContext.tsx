@@ -27,11 +27,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (savedTheme && (savedTheme === "light" || savedTheme === "dark")) {
         setThemeState(savedTheme);
         document.documentElement.setAttribute("data-theme", savedTheme);
+        document.documentElement.classList.toggle("dark", savedTheme === "dark");
       } else {
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const initialTheme: Theme = prefersDark ? "dark" : "light";
         setThemeState(initialTheme);
         document.documentElement.setAttribute("data-theme", initialTheme);
+        document.documentElement.classList.toggle("dark", initialTheme === "dark");
       }
     } catch {
       // Ignore
@@ -43,6 +45,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       localStorage.setItem("pg.theme", newTheme);
       document.documentElement.setAttribute("data-theme", newTheme);
+      document.documentElement.classList.toggle("dark", newTheme === "dark");
     } catch {
       // Ignore
     }

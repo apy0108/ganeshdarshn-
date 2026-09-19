@@ -103,7 +103,8 @@ export default function SideNav() {
     }
   };
 
-  const isDedicatedFlow = pathname === "/start" || (pathname && pathname.startsWith("/routes/"));
+  // Dedicated flow or home page (which has its own integrated top-bar menu button)
+  const isDedicatedFlow = pathname === "/" || pathname === "/start" || (pathname && pathname.startsWith("/routes/"));
 
   const languages: { code: Language; label: string; native: string }[] = [
     { code: "en", label: "English", native: "English" },
@@ -113,7 +114,7 @@ export default function SideNav() {
 
   return (
     <>
-      {/* Floating Side Navigation Hamburger Trigger Button (TOP LEFT) */}
+      {/* Floating Side Navigation Hamburger Trigger Button on sub-pages (TOP LEFT) */}
       {!isDedicatedFlow && (
         <button
           type="button"

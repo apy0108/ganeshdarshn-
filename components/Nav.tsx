@@ -4,28 +4,55 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Compass, Map, Route, Bookmark, LucideIcon } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import { Translations } from "@/lib/translations";
 
 interface NavItem {
-  name: string;
+  key: keyof Translations;
+  nameFallback: string;
   href: string;
   icon: LucideIcon;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Explore", href: "/explore", icon: Compass },
-  { name: "Map", href: "/map", icon: Map },
-  { name: "Routes", href: "/routes", icon: Route },
-  { name: "Saved", href: "/saved", icon: Bookmark },
+  { key: "home", nameFallback: "Home", href: "/", icon: Home },
+  { key: "explore", nameFallback: "Explore", href: "/explore", icon: Compass },
+  { key: "live_map", nameFallback: "Map", href: "/map", icon: Map },
+  { key: "curated_routes", nameFallback: "Routes", href: "/routes", icon: Route },
+  { key: "saved_mandals", nameFallback: "Saved", href: "/saved", icon: Bookmark },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
+  const { language } = useLanguage();
 
   // Hide bottom navigation on dedicated wizard and tour navigation pages
   if (pathname === "/start" || pathname === "/plan" || (pathname && pathname.startsWith("/routes/"))) {
     return null;
   }
+
+  const getShortName = (item: NavItem) => {
+    if (language === "mr") {
+      switch (item.key) {
+        case "home": return "मुख्य";
+        case "explore": return "एक्सप्लोर";
+        case "live_map": return "नकाशा";
+        case "curated_routes": return "मार्ग";
+        case "saved_mandals": return "जतन";
+        default: return item.nameFallback;
+      }
+    } else if (language === "hi") {
+      switch (item.key) {
+        case "home": return "होम";
+        case "explore": return "एक्सप्लोर";
+        case "live_map": return "नक्शा";
+        case "curated_routes": return "मार्ग";
+        case "saved_mandals": return "सहेजे गए";
+        default: return item.nameFallback;
+      }
+    }
+    return item.nameFallback;
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--surface)] border-t-[1.5px] border-[var(--border)] pb-[env(safe-area-inset-bottom,0px)]">
@@ -37,10 +64,11 @@ export default function Nav() {
               : pathname.startsWith(item.href);
 
           const Icon = item.icon;
+          const label = getShortName(item);
 
           return (
             <Link
-              key={item.name}
+              key={item.href}
               href={item.href}
               className={`relative flex flex-col items-center justify-center flex-1 h-full tap-target transition-colors duration-150 ${
                 isActive ? "text-[var(--accent)]" : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -50,7 +78,7 @@ export default function Nav() {
               {isActive && (
                 <>
                   <span className="text-[11px] font-baloo font-semibold leading-tight mt-0.5">
-                    {item.name}
+                    {label}
                   </span>
                   <span className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full mt-0.5" />
                 </>

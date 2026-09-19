@@ -11,6 +11,7 @@ import {
   Sparkles,
   Search,
   X,
+  Menu,
   CheckCircle2,
 } from "lucide-react";
 import { MANDALS, CURATED_ROUTES } from "@/lib/mandals";
@@ -137,21 +138,35 @@ export default function HomePage() {
         </aside>
       )}
 
-      {/* Top Bar with Festival Countdown / Status Banner (NO DUPLICATE MENU BUTTON) */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] font-baloo font-bold text-[12px] border border-orange-200">
-          <Calendar size={13} />
-          <span suppressHydrationWarning>
-            {festivalInfo.status === "active" && festivalInfo.dayNumber
-              ? t("festival_banner_active", { day: festivalInfo.dayNumber })
-              : festivalInfo.status === "upcoming"
-              ? t("festival_banner_upcoming", { days: festivalInfo.pill.replace(/\D/g, "") || "1" })
-              : t("festival_banner_ended")}
-          </span>
+      {/* Integrated Top Bar with Menu Trigger, Festival Countdown Pill & Title (NO OVERLAP) */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Top-Left Menu Trigger Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-sidenav"))}
+            className="w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--text)] border-[1.5px] border-[var(--border)] flex items-center justify-center hover:border-[var(--accent)] active:scale-95 transition-all shadow-sm flex-shrink-0"
+            aria-label="Open Side Navigation Menu"
+            title="Menu"
+          >
+            <Menu size={20} className="text-[var(--text)]" />
+          </button>
+
+          {/* Festival Day Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] font-baloo font-bold text-[11px] sm:text-[12px] border border-orange-200 truncate">
+            <Calendar size={13} className="flex-shrink-0" />
+            <span suppressHydrationWarning className="truncate">
+              {festivalInfo.status === "active" && festivalInfo.dayNumber
+                ? t("festival_banner_active", { day: festivalInfo.dayNumber })
+                : festivalInfo.status === "upcoming"
+                ? t("festival_banner_upcoming", { days: festivalInfo.pill.replace(/\D/g, "") || "1" })
+                : t("festival_banner_ended")}
+            </span>
+          </div>
         </div>
 
-        <div>
-          <span className="text-[13px] font-marathi font-semibold text-[var(--muted)]">
+        <div className="flex-shrink-0">
+          <span className="text-xs sm:text-[13px] font-marathi font-semibold text-[var(--muted)]">
             {t("festival_header_title")}
           </span>
         </div>

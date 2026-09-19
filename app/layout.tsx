@@ -3,6 +3,8 @@ import { Baloo_2, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import AppProviders from "@/components/AppProviders";
+import SideNav from "@/components/SideNav";
 
 const baloo = Baloo_2({
   weight: ["400", "600", "800"],
@@ -17,9 +19,6 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
   variable: "--font-noto-devanagari",
   display: "swap",
 });
-
-import AppProviders from "@/components/AppProviders";
-import SideNav from "@/components/SideNav";
 
 export const metadata: Metadata = {
   title: "Pune Ganpati Darshan — Live Queues, Routes & Map",
@@ -50,9 +49,9 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <AppProviders>
           <main className="min-h-screen pb-24">{children}</main>
+          <SideNav />
+          <Nav />
         </AppProviders>
-        <SideNav />
-        <Nav />
       </body>
     </html>
   );
