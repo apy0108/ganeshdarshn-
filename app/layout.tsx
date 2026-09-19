@@ -5,6 +5,7 @@ import Nav from "@/components/Nav";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AppProviders from "@/components/AppProviders";
 import SideNav from "@/components/SideNav";
+import { Analytics } from "@vercel/analytics/next";
 
 const baloo = Baloo_2({
   weight: ["400", "600", "800"],
@@ -52,6 +53,7 @@ export default function RootLayout({
           <SideNav />
           <Nav />
         </AppProviders>
+        <Analytics />
       </body>
     </html>
   );
