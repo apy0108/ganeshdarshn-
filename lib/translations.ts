@@ -57,6 +57,14 @@ export interface Translations {
   pwa_banner_desc: string;
   pwa_banner_btn: string;
   festival_header_title: string;
+  more_section_title: string;
+  more_section_sub: string;
+  more_curated_routes: string;
+  more_parking: string;
+  more_police_stations: string;
+  more_washrooms: string;
+  police_stations_pending: string;
+  washrooms_pending: string;
 }
 
 export const TRANSLATIONS: Record<Language, Translations> = {
@@ -117,6 +125,14 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     pwa_banner_desc: "Fast, offline queues & maps on your home screen.",
     pwa_banner_btn: "Add",
     festival_header_title: "Pune Ganeshotsav",
+    more_section_title: "More",
+    more_section_sub: "Helpful tools & essentials",
+    more_curated_routes: "Curated Routes",
+    more_parking: "Parking",
+    more_police_stations: "Police Stations Near You",
+    more_washrooms: "Washrooms Near You",
+    police_stations_pending: "Police stations directory is pending official Pune Police data integration.",
+    washrooms_pending: "Washrooms directory is pending official PMC data integration.",
   },
   mr: {
     app_title: "पुणे गणपती दर्शन",
@@ -175,6 +191,14 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     pwa_banner_desc: "थेट रांगा आणि नकाशे आपल्या होम स्क्रीनवर.",
     pwa_banner_btn: "जोडा",
     festival_header_title: "पुणे गणेशोत्सव",
+    more_section_title: "अधिक सुविधा",
+    more_section_sub: "उपयुक्त साधने व माहिती",
+    more_curated_routes: "निवडक मार्ग",
+    more_parking: "पार्किंग",
+    more_police_stations: "जवळची पोलीस ठाणी",
+    more_washrooms: "जवळची स्वच्छतागृहे",
+    police_stations_pending: "पुणे पोलीस ठाण्यांची अधिकृत माहिती लवकरच जोडली जाईल.",
+    washrooms_pending: "महापालिका स्वच्छतागृहांची अधिकृत माहिती लवकरच जोडली जाईल.",
   },
   hi: {
     app_title: "पुणे गणपति दर्शन",
@@ -233,5 +257,13 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     pwa_banner_desc: "लाइव कतारें और नक्शे अपनी होम स्क्रीन पर पाएं।",
     pwa_banner_btn: "जोड़ें",
     festival_header_title: "पुणे गणेशोत्सव",
+    more_section_title: "अधिक सुविधाएं",
+    more_section_sub: "उपयोगी साधन और जानकारी",
+    more_curated_routes: "चयनित मार्ग",
+    more_parking: "पार्किंग",
+    more_police_stations: "पास के पुलिस स्टेशन",
+    more_washrooms: "पास के शौचालय",
+    police_stations_pending: "पुणे पुलिस स्टेशनों की आधिकारिक जानकारी जल्द ही जोड़ी जाएगी।",
+    washrooms_pending: "शौचालयों की आधिकारिक जानकारी जल्द ही जोड़ी जाएगी।",
   },
 };
