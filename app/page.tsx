@@ -13,11 +13,8 @@ import {
   X,
   Menu,
   CheckCircle2,
-  Car,
-  Shield,
-  Bath,
 } from "lucide-react";
-import { MANDALS } from "@/lib/mandals";
+import { MANDALS, CURATED_ROUTES } from "@/lib/mandals";
 import { LiveCrowd, Mandal } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
 import MandalCard from "@/components/MandalCard";
@@ -40,19 +37,6 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState<ToastState>({ show: false, message: "" });
   const { t, language } = useLanguage();
-
-  const handlePendingFeature = (type: "police" | "washroom") => {
-    setToast({
-      show: true,
-      message:
-        type === "police"
-          ? t("police_stations_pending")
-          : t("washrooms_pending"),
-    });
-    setTimeout(() => {
-      setToast((prev) => ({ ...prev, show: false }));
-    }, 4500);
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -224,80 +208,52 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* More Section */}
-      <section className="px-4 py-4 space-y-3">
-        <div>
-          <h2 className="text-[20px] font-extrabold font-baloo text-[var(--text)] leading-tight">
-            {t("more_section_title")}
-          </h2>
-          <p className="text-xs font-marathi text-[var(--muted)]">
-            {t("more_section_sub")}
-          </p>
-        </div>
-
-        {/* 2x2 Grid of the 4 requested options ONLY */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* 1. Curated Routes */}
+      {/* Darshan Plans ("Curated Routes" Section) */}
+      <section className="py-4 space-y-3">
+        <div className="px-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-[20px] font-extrabold font-baloo text-[var(--text)] leading-tight">
+              {t("darshan_plans")}
+            </h2>
+            <p className="text-xs font-marathi text-[var(--muted)]">
+              {t("darshan_plans_sub")}
+            </p>
+          </div>
           <Link
             href="/routes"
-            className="p-3.5 sm:p-4 rounded-[20px] bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] shadow-sm hover:border-[var(--accent)] active:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] group"
+            className="text-xs font-extrabold font-baloo text-[var(--accent)] hover:underline"
           >
-            <div className="w-10 h-10 rounded-[14px] bg-orange-100 dark:bg-orange-950/40 text-[var(--accent)] flex items-center justify-center flex-shrink-0">
-              <Footprints size={22} />
-            </div>
-            <div className="pt-2">
-              <div className="text-[15px] font-extrabold font-baloo text-[var(--text)] group-hover:text-[var(--accent)] leading-tight transition-colors">
-                {t("more_curated_routes")}
-              </div>
-            </div>
+            {t("see_all_routes")}
           </Link>
+        </div>
 
-          {/* 2. Parking */}
-          <Link
-            href="/parking"
-            className="p-3.5 sm:p-4 rounded-[20px] bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] shadow-sm hover:border-[var(--accent)] active:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] group"
-          >
-            <div className="w-10 h-10 rounded-[14px] bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-              <Car size={22} />
-            </div>
-            <div className="pt-2">
-              <div className="text-[15px] font-extrabold font-baloo text-[var(--text)] group-hover:text-[var(--accent)] leading-tight transition-colors">
-                {t("more_parking")}
+        {/* Horizontal scroll of route cards */}
+        <div className="flex items-stretch gap-3 overflow-x-auto no-scrollbar px-4 pt-1 pb-2">
+          {CURATED_ROUTES.map((route) => (
+            <Link
+              key={route.id}
+              href={`/plan?route=${route.id}`}
+              className="flex-shrink-0 w-[260px] p-4 rounded-[20px] bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] flex flex-col justify-between space-y-3 active:scale-[0.98] transition-transform"
+            >
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--accent-bg)] text-[var(--accent)] text-[11px] font-bold font-baloo">
+                  <Footprints size={12} /> {route.mandalCount} {t("stops_label")}
+                </div>
+                <h3 className="text-base font-extrabold font-baloo text-[var(--text)] leading-snug">
+                  {route.title}
+                </h3>
+                <p className="text-xs text-[var(--muted)] line-clamp-2 font-baloo">
+                  {route.tagline}
+                </p>
               </div>
-            </div>
-          </Link>
 
-          {/* 3. Police Stations Near You */}
-          <button
-            type="button"
-            onClick={() => handlePendingFeature("police")}
-            className="p-3.5 sm:p-4 rounded-[20px] bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] shadow-sm hover:border-[var(--accent)] active:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] text-left group"
-          >
-            <div className="w-10 h-10 rounded-[14px] bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
-              <Shield size={22} />
-            </div>
-            <div className="pt-2">
-              <div className="text-[14px] sm:text-[15px] font-extrabold font-baloo text-[var(--text)] group-hover:text-[var(--accent)] leading-tight transition-colors">
-                {t("more_police_stations")}
+              <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between text-xs font-bold font-baloo text-[var(--muted)]">
+                <span>{route.approxDistance}</span>
+                <span>•</span>
+                <span>{route.approxWalkTime}</span>
               </div>
-            </div>
-          </button>
-
-          {/* 4. Washrooms Near You */}
-          <button
-            type="button"
-            onClick={() => handlePendingFeature("washroom")}
-            className="p-3.5 sm:p-4 rounded-[20px] bg-[var(--card-bg)] border-[1.5px] border-[var(--border)] shadow-sm hover:border-[var(--accent)] active:scale-[0.98] transition-all flex flex-col justify-between min-h-[100px] text-left group"
-          >
-            <div className="w-10 h-10 rounded-[14px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
-              <Bath size={22} />
-            </div>
-            <div className="pt-2">
-              <div className="text-[14px] sm:text-[15px] font-extrabold font-baloo text-[var(--text)] group-hover:text-[var(--accent)] leading-tight transition-colors">
-                {t("more_washrooms")}
-              </div>
-            </div>
-          </button>
+            </Link>
+          ))}
         </div>
       </section>
 

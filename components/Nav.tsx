@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Compass, Map, Route, Bookmark, LucideIcon } from "lucide-react";
+import { Home, Compass, Map, MoreHorizontal, Bookmark, LucideIcon } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { Translations } from "@/lib/translations";
 
@@ -18,7 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "home", nameFallback: "Home", href: "/", icon: Home },
   { key: "explore", nameFallback: "Explore", href: "/explore", icon: Compass },
   { key: "live_map", nameFallback: "Map", href: "/map", icon: Map },
-  { key: "curated_routes", nameFallback: "Routes", href: "/routes", icon: Route },
+  { key: "more", nameFallback: "More", href: "/more", icon: MoreHorizontal },
   { key: "saved_mandals", nameFallback: "Saved", href: "/saved", icon: Bookmark },
 ];
 
@@ -37,7 +37,7 @@ export default function Nav() {
         case "home": return "मुख्य";
         case "explore": return "एक्सप्लोर";
         case "live_map": return "नकाशा";
-        case "curated_routes": return "मार्ग";
+        case "more": return "अधिक";
         case "saved_mandals": return "जतन";
         default: return item.nameFallback;
       }
@@ -46,7 +46,7 @@ export default function Nav() {
         case "home": return "होम";
         case "explore": return "एक्सप्लोर";
         case "live_map": return "नक्शा";
-        case "curated_routes": return "मार्ग";
+        case "more": return "अधिक";
         case "saved_mandals": return "सहेजे गए";
         default: return item.nameFallback;
       }
