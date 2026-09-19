@@ -9,7 +9,7 @@ export async function POST(
   try {
     const mandalId = params.mandalId;
     const body = await req.json();
-    const { deviceId, status, requestId, atMandal } = body;
+    const { deviceId, status, requestId, lat, lng, accuracyM, coords } = body;
 
     if (!deviceId || typeof deviceId !== "string" || deviceId.trim() === "") {
       return NextResponse.json(
@@ -25,6 +25,11 @@ export async function POST(
       );
     }
 
+    // Resolve submitted GPS coordinates
+    const reportCoords = coords || (typeof lat === "number" && typeof lng === "number"
+      ? { lat, lng, accuracyM }
+      : undefined);
+
     const reportRequestId =
       requestId || `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -32,8 +37,8 @@ export async function POST(
       mandalId,
       status: status as CrowdStatus,
       deviceId,
-      atMandal: Boolean(atMandal),
       requestId: reportRequestId,
+      coords: reportCoords,
     });
 
     if (!result.success) {
@@ -43,12 +48,13 @@ export async function POST(
             success: false,
             reason: "cooldown",
             retryAfter: result.retryAfter,
+            error: "You recently submitted a report for this mandal. Please wait for cooldown to expire.",
           },
           { status: 429 }
         );
       }
       return NextResponse.json(
-        { success: false, error: result.reason },
+        { success: false, error: result.reason || "Validation failed" },
         { status: 400 }
       );
     }

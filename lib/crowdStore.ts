@@ -10,17 +10,22 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { CrowdStatus, LiveCrowd } from "./types";
-import { MANDALS } from "./mandals";
+import { MANDALS, getMandalById, haversine } from "./mandals";
+
+export const CROWD_REPORT_TTL_MS = 90 * 60 * 1000; // 90 minutes
+export const COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
+export const MAX_REPORT_DISTANCE_METRES = 1000; // 1 km
+export const MAX_GPS_ACCURACY_METRES = 200; // GPS accuracy threshold
 
 export interface StoredCrowdReport {
   mandalId: string;
   status: CrowdStatus;
   deviceId: string;
-  atMandal: boolean;
   requestId: string;
   minutes?: number;
   timestamp: number; // epoch ms
   expiresAt: number; // epoch ms
+  verifiedLocation: boolean;
 }
 
 export interface MandalCrowdState {
@@ -32,24 +37,57 @@ export interface MandalCrowdState {
   isEstimated: boolean;
 }
 
-// In-memory store (active in dev/fallback mode or alongside Firestore)
+// In-memory cache (acts as local offline fallback or fast cache in development)
 const inMemoryReports: StoredCrowdReport[] = [];
 const inMemoryState: Record<string, MandalCrowdState> = {};
 const usedRequestIds = new Set<string>();
 
-const COOLDOWN_MS = 60 * 60 * 1000; // 60 minutes
-const EXPIRY_MS = 90 * 60 * 1000; // 90 minutes
+/**
+ * Server-side 1 km distance & accuracy validation.
+ * Privacy: Verifies devotee is within 1 km without permanently persisting user's raw lat/lng.
+ */
+export function validateReportLocation(
+  coords: { lat?: number; lng?: number; accuracyM?: number } | undefined,
+  mandalId: string
+): { valid: boolean; reason?: string; distanceM?: number } {
+  if (!coords || typeof coords.lat !== "number" || typeof coords.lng !== "number") {
+    return {
+      valid: false,
+      reason: "Location coordinates are required to submit a report.",
+    };
+  }
 
-// Helper to get time of day status estimate
-export function getTimeOfDayEstimate(): CrowdStatus {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 9) return "short";
-  if (hour >= 9 && hour < 17) return "moving";
-  if (hour >= 17 && hour < 23) return "moving";
-  return "short";
+  const mandal = getMandalById(mandalId);
+  if (!mandal) {
+    return { valid: false, reason: "Mandal not found." };
+  }
+
+  // Check GPS accuracy if provided
+  const accuracy = coords.accuracyM ?? 50;
+  if (accuracy > MAX_GPS_ACCURACY_METRES) {
+    return {
+      valid: false,
+      reason: "GPS location accuracy is too low (>200m). Please wait for a better GPS fix.",
+    };
+  }
+
+  const distanceM = haversine(
+    { lat: coords.lat, lng: coords.lng },
+    { lat: mandal.lat, lng: mandal.lng }
+  );
+
+  if (distanceM > MAX_REPORT_DISTANCE_METRES) {
+    return {
+      valid: false,
+      reason: `You are ${(distanceM / 1000).toFixed(1)} km away. Reports are only accepted within 1 km of the mandal.`,
+      distanceM: Math.round(distanceM),
+    };
+  }
+
+  return { valid: true, distanceM: Math.round(distanceM) };
 }
 
-// Helper to compute median
+// Helper to compute median wait time
 function calculateMedian(values: number[]): number | undefined {
   if (values.length === 0) return undefined;
   const sorted = [...values].sort((a, b) => a - b);
@@ -66,7 +104,7 @@ export async function getDeviceCooldown(
 ): Promise<{ onCooldown: boolean; secondsRemaining: number }> {
   const now = Date.now();
 
-  // Try Firestore if available
+  // 1. Check Firestore if configured
   if (isConfigured && db) {
     try {
       const q = query(
@@ -78,7 +116,12 @@ export async function getDeviceCooldown(
       let latestTimestamp = 0;
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const ts = data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : data.timestamp;
+        const ts =
+          data.timestamp && typeof data.timestamp.toMillis === "function"
+            ? data.timestamp.toMillis()
+            : typeof data.timestamp === "number"
+            ? data.timestamp
+            : 0;
         if (ts > latestTimestamp) latestTimestamp = ts;
       });
 
@@ -87,11 +130,11 @@ export async function getDeviceCooldown(
         return { onCooldown: true, secondsRemaining };
       }
     } catch (e) {
-      console.warn("Firestore cooldown check error, falling back to memory:", e);
+      console.warn("Firestore cooldown check error, checking memory:", e);
     }
   }
 
-  // Memory check
+  // 2. Memory check fallback
   const recent = inMemoryReports.filter(
     (r) => r.deviceId === deviceId && r.mandalId === mandalId && now - r.timestamp < COOLDOWN_MS
   );
@@ -105,12 +148,40 @@ export async function getDeviceCooldown(
   return { onCooldown: false, secondsRemaining: 0 };
 }
 
-// Get all cooldowns for a device
+// Get all active cooldowns for a device
 export async function getAllDeviceCooldowns(
   deviceId: string
 ): Promise<Record<string, number>> {
   const now = Date.now();
   const cooldowns: Record<string, number> = {};
+
+  if (isConfigured && db) {
+    try {
+      const q = query(
+        collection(db, "crowd_reports"),
+        where("deviceId", "==", deviceId)
+      );
+      const snapshot = await getDocs(q);
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const ts =
+          data.timestamp && typeof data.timestamp.toMillis === "function"
+            ? data.timestamp.toMillis()
+            : typeof data.timestamp === "number"
+            ? data.timestamp
+            : 0;
+        if (ts && now - ts < COOLDOWN_MS) {
+          const remaining = Math.ceil((COOLDOWN_MS - (now - ts)) / 1000);
+          if (!cooldowns[data.mandalId] || remaining > cooldowns[data.mandalId]) {
+            cooldowns[data.mandalId] = remaining;
+          }
+        }
+      });
+      return cooldowns;
+    } catch (e) {
+      console.warn("Firestore getAllDeviceCooldowns error:", e);
+    }
+  }
 
   const userReports = inMemoryReports.filter(
     (r) => r.deviceId === deviceId && now - r.timestamp < COOLDOWN_MS
@@ -126,20 +197,20 @@ export async function getAllDeviceCooldowns(
   return cooldowns;
 }
 
-// Submit a crowd status report
+// Submit a crowd status report (Short / Moving / Heavy)
 export async function addCrowdReport(report: {
   mandalId: string;
   status: CrowdStatus;
   deviceId: string;
-  atMandal: boolean;
   requestId: string;
+  coords?: { lat?: number; lng?: number; accuracyM?: number };
 }): Promise<{
   success: boolean;
   reason?: string;
   retryAfter?: number;
   crowd?: MandalCrowdState;
 }> {
-  const { mandalId, status, deviceId, atMandal, requestId } = report;
+  const { mandalId, status, deviceId, requestId, coords } = report;
 
   if (!deviceId || deviceId.trim() === "") {
     return { success: false, reason: "invalid_device_id" };
@@ -149,13 +220,19 @@ export async function addCrowdReport(report: {
     return { success: false, reason: "invalid_status" };
   }
 
-  // Deduplication check
+  // 1. Server-side 1 km validation
+  const locationValidation = validateReportLocation(coords, mandalId);
+  if (!locationValidation.valid) {
+    return { success: false, reason: locationValidation.reason };
+  }
+
+  // 2. Deduplication check
   if (usedRequestIds.has(requestId)) {
     const current = await getMandalCrowdState(mandalId);
     return { success: true, crowd: current };
   }
 
-  // Cooldown check (60 mins)
+  // 3. Cooldown check (60 mins)
   const cooldown = await getDeviceCooldown(deviceId, mandalId);
   if (cooldown.onCooldown) {
     return {
@@ -170,45 +247,56 @@ export async function addCrowdReport(report: {
     mandalId,
     status,
     deviceId,
-    atMandal: Boolean(atMandal),
     requestId,
+    verifiedLocation: true,
     timestamp: now,
-    expiresAt: now + EXPIRY_MS,
+    expiresAt: now + CROWD_REPORT_TTL_MS,
   };
 
   usedRequestIds.add(requestId);
   inMemoryReports.push(storedReport);
 
-  // If Firestore is available, save doc
+  // 4. Persist report directly to Firestore
   if (isConfigured && db) {
     try {
       await setDoc(doc(db, "crowd_reports", requestId), {
-        ...storedReport,
+        mandalId,
+        status,
+        deviceId,
+        requestId,
+        verifiedLocation: true,
         timestamp: Timestamp.fromMillis(now),
         expiresAt: Timestamp.fromMillis(storedReport.expiresAt),
       });
     } catch (e) {
-      console.warn("Firestore write error:", e);
+      console.warn("Firestore write error for crowd report:", e);
     }
   }
 
-  // Recalculate crowd state for this mandal
+  // 5. Authoritative recalculation
   const newState = await recalculateMandalState(mandalId);
   return { success: true, crowd: newState };
 }
 
-// Submit a wait time report
+// Submit a wait-time report (5, 10, 15, 20, 30, 45, 60, 90 mins)
 export async function addWaitTimeReport(report: {
   mandalId: string;
   minutes: number;
   deviceId: string;
   requestId: string;
+  coords?: { lat?: number; lng?: number; accuracyM?: number };
 }): Promise<{ success: boolean; waitMinutes?: number; reason?: string }> {
-  const { mandalId, minutes, deviceId, requestId } = report;
+  const { mandalId, minutes, deviceId, requestId, coords } = report;
   const validMinutes = [5, 10, 15, 20, 30, 45, 60, 90];
 
   if (!validMinutes.includes(minutes)) {
     return { success: false, reason: "invalid_minutes" };
+  }
+
+  // 1. Server-side 1 km validation
+  const locationValidation = validateReportLocation(coords, mandalId);
+  if (!locationValidation.valid) {
+    return { success: false, reason: locationValidation.reason };
   }
 
   if (usedRequestIds.has(requestId)) {
@@ -217,31 +305,100 @@ export async function addWaitTimeReport(report: {
   }
 
   const now = Date.now();
+  const status: CrowdStatus = minutes <= 15 ? "short" : minutes <= 40 ? "moving" : "heavy";
+
   const storedReport: StoredCrowdReport = {
     mandalId,
-    status: minutes <= 15 ? "short" : minutes <= 40 ? "moving" : "heavy",
+    status,
     deviceId,
-    atMandal: true,
     requestId,
     minutes,
+    verifiedLocation: true,
     timestamp: now,
-    expiresAt: now + EXPIRY_MS,
+    expiresAt: now + CROWD_REPORT_TTL_MS,
   };
 
   usedRequestIds.add(requestId);
   inMemoryReports.push(storedReport);
 
+  // 2. Persist wait-time report directly to Firestore
+  if (isConfigured && db) {
+    try {
+      await setDoc(doc(db, "crowd_reports", requestId), {
+        mandalId,
+        status,
+        minutes,
+        deviceId,
+        requestId,
+        verifiedLocation: true,
+        timestamp: Timestamp.fromMillis(now),
+        expiresAt: Timestamp.fromMillis(storedReport.expiresAt),
+      });
+    } catch (e) {
+      console.warn("Firestore write error for wait-time report:", e);
+    }
+  }
+
+  // 3. Authoritative recalculation
   const updatedState = await recalculateMandalState(mandalId);
   return { success: true, waitMinutes: updatedState.waitMinutes };
 }
 
-// Recalculate crowd_state for a mandal based on active reports (last 90 min)
+// Recalculate crowd_state for a mandal based on non-expired reports (<90 min)
 export async function recalculateMandalState(mandalId: string): Promise<MandalCrowdState> {
   const now = Date.now();
-  const activeReports = inMemoryReports.filter(
-    (r) => r.mandalId === mandalId && r.expiresAt > now
-  );
+  let activeReports: StoredCrowdReport[] = [];
 
+  // 1. Fetch active reports from Firestore if configured
+  if (isConfigured && db) {
+    try {
+      const q = query(
+        collection(db, "crowd_reports"),
+        where("mandalId", "==", mandalId)
+      );
+      const snapshot = await getDocs(q);
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const exp =
+          data.expiresAt && typeof data.expiresAt.toMillis === "function"
+            ? data.expiresAt.toMillis()
+            : typeof data.expiresAt === "number"
+            ? data.expiresAt
+            : 0;
+
+        const ts =
+          data.timestamp && typeof data.timestamp.toMillis === "function"
+            ? data.timestamp.toMillis()
+            : typeof data.timestamp === "number"
+            ? data.timestamp
+            : 0;
+
+        if (exp > now && ["short", "moving", "heavy"].includes(data.status)) {
+          activeReports.push({
+            mandalId,
+            status: data.status as CrowdStatus,
+            deviceId: data.deviceId || "",
+            requestId: data.requestId || docSnap.id,
+            minutes: typeof data.minutes === "number" ? data.minutes : undefined,
+            verifiedLocation: Boolean(data.verifiedLocation),
+            timestamp: ts,
+            expiresAt: exp,
+          });
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore fetch error in recalculateMandalState:", e);
+    }
+  }
+
+  // 2. Include in-memory reports if Firestore returned nothing or is offline
+  if (activeReports.length === 0) {
+    activeReports = inMemoryReports.filter(
+      (r) => r.mandalId === mandalId && r.expiresAt > now
+    );
+  }
+
+  // 3. If zero active reports exist within 90 minutes -> "none" (No fake data!)
   if (activeReports.length === 0) {
     const fallbackState: MandalCrowdState = {
       mandalId,
@@ -251,17 +408,31 @@ export async function recalculateMandalState(mandalId: string): Promise<MandalCr
       isEstimated: false,
     };
     inMemoryState[mandalId] = fallbackState;
+
+    if (isConfigured && db) {
+      try {
+        await setDoc(doc(db, "crowd_state", mandalId), {
+          ...fallbackState,
+          lastReportAt: 0,
+        });
+      } catch (e) {
+        console.warn("Firestore state sync error:", e);
+      }
+    }
+
     return fallbackState;
   }
 
-  // Status aggregation: weighted by recency / majority
+  // 4. Deterministic Aggregation
   const counts: Record<CrowdStatus, number> = { short: 0, moving: 0, heavy: 0, none: 0 };
   const waitTimes: number[] = [];
   let latestTs = 0;
 
   activeReports.forEach((r) => {
     counts[r.status] = (counts[r.status] || 0) + 1;
-    if (r.minutes) waitTimes.push(r.minutes);
+    if (typeof r.minutes === "number" && r.minutes > 0) {
+      waitTimes.push(r.minutes);
+    }
     if (r.timestamp > latestTs) latestTs = r.timestamp;
   });
 
@@ -286,7 +457,7 @@ export async function recalculateMandalState(mandalId: string): Promise<MandalCr
 
   inMemoryState[mandalId] = computedState;
 
-  // Sync to Firestore if available
+  // 5. Persist the aggregated state to Firestore crowd_state/{mandalId}
   if (isConfigured && db) {
     try {
       await setDoc(doc(db, "crowd_state", mandalId), {
@@ -303,14 +474,109 @@ export async function recalculateMandalState(mandalId: string): Promise<MandalCr
 
 // Get crowd state for a single mandal
 export async function getMandalCrowdState(mandalId: string): Promise<MandalCrowdState> {
+  const now = Date.now();
+
+  // Try Firestore first
+  if (isConfigured && db) {
+    try {
+      const docSnap = await getDoc(doc(db, "crowd_state", mandalId));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const lastReportAt =
+          data.lastReportAt && typeof data.lastReportAt.toMillis === "function"
+            ? data.lastReportAt.toMillis()
+            : typeof data.lastReportAt === "number"
+            ? data.lastReportAt
+            : 0;
+
+        if (lastReportAt > 0 && now - lastReportAt <= CROWD_REPORT_TTL_MS && data.status !== "none") {
+          return {
+            mandalId,
+            status: data.status as CrowdStatus,
+            waitMinutes: data.waitMinutes,
+            lastReportAt,
+            reportCount: data.reportCount || 0,
+            isEstimated: Boolean(data.isEstimated),
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore getMandalCrowdState error:", e);
+    }
+  }
+
   if (inMemoryState[mandalId]) {
     const state = inMemoryState[mandalId];
-    if (!state.isEstimated && Date.now() - state.lastReportAt > EXPIRY_MS) {
-      return recalculateMandalState(mandalId);
+    if (state.lastReportAt > 0 && now - state.lastReportAt <= CROWD_REPORT_TTL_MS) {
+      return state;
     }
-    return state;
   }
+
   return recalculateMandalState(mandalId);
+}
+
+// Get crowd state for ALL mandals
+export async function getAllCrowdStates(): Promise<Record<string, MandalCrowdState>> {
+  const now = Date.now();
+  const result: Record<string, MandalCrowdState> = {};
+
+  // Try fetching all from Firestore crowd_state
+  if (isConfigured && db) {
+    try {
+      const snapshot = await getDocs(collection(db, "crowd_state"));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const lastReportAt =
+          data.lastReportAt && typeof data.lastReportAt.toMillis === "function"
+            ? data.lastReportAt.toMillis()
+            : typeof data.lastReportAt === "number"
+            ? data.lastReportAt
+            : 0;
+
+        const isExpired = lastReportAt > 0 && now - lastReportAt > CROWD_REPORT_TTL_MS;
+
+        if (isExpired || data.status === "none" || !data.status) {
+          result[docSnap.id] = {
+            mandalId: docSnap.id,
+            status: "none",
+            lastReportAt: 0,
+            reportCount: 0,
+            isEstimated: false,
+          };
+        } else {
+          result[docSnap.id] = {
+            mandalId: docSnap.id,
+            status: data.status as CrowdStatus,
+            waitMinutes: data.waitMinutes,
+            lastReportAt,
+            reportCount: data.reportCount || 0,
+            isEstimated: Boolean(data.isEstimated),
+          };
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore getAllCrowdStates error:", e);
+    }
+  }
+
+  // Ensure all 30 mandals have an entry
+  for (const m of MANDALS) {
+    if (!result[m.id]) {
+      if (inMemoryState[m.id] && now - inMemoryState[m.id].lastReportAt <= CROWD_REPORT_TTL_MS) {
+        result[m.id] = inMemoryState[m.id];
+      } else {
+        result[m.id] = {
+          mandalId: m.id,
+          status: "none",
+          lastReportAt: 0,
+          reportCount: 0,
+          isEstimated: false,
+        };
+      }
+    }
+  }
+
+  return result;
 }
 
 export interface StoredDwellSignal {
@@ -342,7 +608,6 @@ export async function addDwellSignal(signal: {
   const todayStr = new Date().toISOString().split("T")[0];
   const dedupKey = `${deviceId}_${mandalId}_${todayStr}_${dwell}`;
 
-  // Allow one primary signal per device per mandal per dwell type per day
   if (processedDwellKeys.has(dedupKey) && !signal.isFinal) {
     const current = await getMandalCrowdState(mandalId);
     return { success: true, state: current };
@@ -364,7 +629,6 @@ export async function addDwellSignal(signal: {
 
   // If dwell is 'queueing', convert to an anonymous crowd indicator
   if (dwell === "queueing") {
-    // Determine implicit queue time from seconds
     const estWait = dwellSeconds > 1800 ? 45 : dwellSeconds > 900 ? 30 : 20;
     const crowdStatus: CrowdStatus = estWait >= 35 ? "heavy" : "moving";
 
@@ -372,11 +636,11 @@ export async function addDwellSignal(signal: {
       mandalId,
       status: crowdStatus,
       deviceId: `dwell_${deviceId}`,
-      atMandal: true,
       requestId: `dwell_${dedupKey}_${now}`,
       minutes: estWait,
+      verifiedLocation: true,
       timestamp: now,
-      expiresAt: now + EXPIRY_MS,
+      expiresAt: now + CROWD_REPORT_TTL_MS,
     });
   }
 
@@ -394,14 +658,5 @@ export async function addDwellSignal(signal: {
 
   const updatedState = await recalculateMandalState(mandalId);
   return { success: true, state: updatedState };
-}
-
-// Get crowd state for ALL mandals
-export async function getAllCrowdStates(): Promise<Record<string, MandalCrowdState>> {
-  const result: Record<string, MandalCrowdState> = {};
-  for (const m of MANDALS) {
-    result[m.id] = await getMandalCrowdState(m.id);
-  }
-  return result;
 }
 

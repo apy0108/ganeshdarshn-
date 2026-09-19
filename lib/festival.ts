@@ -8,83 +8,62 @@ export interface FestivalDayInfo {
   endDateFormatted: string;
 }
 
-// Single Source of Truth for Pune Ganeshotsav Festival Configuration
+// Single Source of Truth for Pune Ganeshotsav Festival Configuration (2026)
 export const FESTIVAL_CONFIG = {
   year: 2026,
-  startMonth: 8, // September (0-indexed: 8 = Sep)
+  startMonth: 9, // September (1-indexed)
   startDay: 14,  // 14 September 2026 (Day 1)
-  endMonth: 8,   // September (0-indexed: 8 = Sep)
+  endMonth: 9,   // September (1-indexed)
   endDay: 25,    // 25 September 2026 (Day 12 - Anant Chaturdashi)
   totalDays: 12,
 };
 
 /**
- * Dynamically computes the festival day status based on current date.
- * Sep 14 = Day 1
- * Sep 15 = Day 2
- * Sep 16 = Day 3
- * Sep 17 = Day 4
- * Sep 18 = Day 5
- * Sep 19 = Day 6
+ * Authoritative dynamic festival calculation using India/Pune local-date semantics (Asia/Kolkata).
+ * Sep 14, 2026 = Day 1
+ * Sep 15, 2026 = Day 2
  * ...
- * Sep 25 = Day 12 (Anant Chaturdashi)
+ * Sep 19, 2026 = Day 6
+ * ...
+ * Sep 25, 2026 = Day 12 (Anant Chaturdashi)
+ * After Sep 25, 2026 = Festival Concluded
+ * Before Sep 14, 2026 = Festival Upcoming
  */
 export function getFestivalDayInfo(customDate?: Date): FestivalDayInfo {
-  const now = customDate || new Date();
-  const year = FESTIVAL_CONFIG.year;
+  const dateObj = customDate || new Date();
 
-  // Start of festival day 1 at 00:00:00 local time
-  const festivalStart = new Date(
-    year,
-    FESTIVAL_CONFIG.startMonth,
-    FESTIVAL_CONFIG.startDay,
-    0,
-    0,
-    0
-  );
+  // Extract date in Asia/Kolkata (IST) timezone
+  const istFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
 
-  // End of festival on final day at 23:59:59 local time
-  const festivalEnd = new Date(
-    year,
-    FESTIVAL_CONFIG.endMonth,
-    FESTIVAL_CONFIG.endDay,
-    23,
-    59,
-    59
-  );
+  const parts = istFormatter.formatToParts(dateObj);
+  let year = FESTIVAL_CONFIG.year;
+  let month = FESTIVAL_CONFIG.startMonth;
+  let day = 19; // Default fallback if parser fails
 
-  const startMs = festivalStart.getTime();
-  const endMs = festivalEnd.getTime();
-  const currentMs = now.getTime();
+  parts.forEach((p) => {
+    if (p.type === "year") year = parseInt(p.value, 10);
+    if (p.type === "month") month = parseInt(p.value, 10);
+    if (p.type === "day") day = parseInt(p.value, 10);
+  });
 
-  if (currentMs < startMs) {
-    const diffDays = Math.ceil((startMs - currentMs) / (1000 * 60 * 60 * 24));
+  // Calculate day difference for Sep 2026
+  if (year < FESTIVAL_CONFIG.year || (year === FESTIVAL_CONFIG.year && month < FESTIVAL_CONFIG.startMonth)) {
     return {
       status: "upcoming",
       totalDays: FESTIVAL_CONFIG.totalDays,
-      pill: `Festival in ${diffDays} day${diffDays > 1 ? "s" : ""}`,
-      banner: `Festival begins in ${diffDays} day${diffDays > 1 ? "s" : ""} (Sep 14 – 25)`,
+      pill: "Festival Upcoming",
+      banner: "Festival begins on Sep 14, 2026",
       startDateFormatted: "Sep 14",
       endDateFormatted: "Sep 25",
     };
-  } else if (currentMs <= endMs) {
-    // Exact day index (1-indexed)
-    const elapsedDays = Math.floor((currentMs - startMs) / (1000 * 60 * 60 * 24));
-    const dayNumber = Math.min(
-      FESTIVAL_CONFIG.totalDays,
-      Math.max(1, elapsedDays + 1)
-    );
+  }
 
-    return {
-      status: "active",
-      dayNumber,
-      totalDays: FESTIVAL_CONFIG.totalDays,
-      pill: `Day ${dayNumber} of ${FESTIVAL_CONFIG.totalDays}`,
-      banner: `🪔 Ganeshotsav • Day ${dayNumber} of ${FESTIVAL_CONFIG.totalDays} · Pune Active`,
-      startDateFormatted: "Sep 14",
-      endDateFormatted: "Sep 25",
-    };
-  } else {
+  if (year > FESTIVAL_CONFIG.year || (year === FESTIVAL_CONFIG.year && month > FESTIVAL_CONFIG.endMonth)) {
     return {
       status: "ended",
       totalDays: FESTIVAL_CONFIG.totalDays,
@@ -94,4 +73,41 @@ export function getFestivalDayInfo(customDate?: Date): FestivalDayInfo {
       endDateFormatted: "Sep 25",
     };
   }
+
+  // Same year & September
+  if (day < FESTIVAL_CONFIG.startDay) {
+    const diffDays = FESTIVAL_CONFIG.startDay - day;
+    return {
+      status: "upcoming",
+      totalDays: FESTIVAL_CONFIG.totalDays,
+      pill: `Festival in ${diffDays} day${diffDays > 1 ? "s" : ""}`,
+      banner: `Festival begins in ${diffDays} day${diffDays > 1 ? "s" : ""} (Sep 14 – 25)`,
+      startDateFormatted: "Sep 14",
+      endDateFormatted: "Sep 25",
+    };
+  }
+
+  if (day > FESTIVAL_CONFIG.endDay) {
+    return {
+      status: "ended",
+      totalDays: FESTIVAL_CONFIG.totalDays,
+      pill: "Festival Concluded",
+      banner: "Pune Ganeshotsav has concluded for this year.",
+      startDateFormatted: "Sep 14",
+      endDateFormatted: "Sep 25",
+    };
+  }
+
+  // Active festival day (1 to 12)
+  const dayNumber = day - FESTIVAL_CONFIG.startDay + 1;
+
+  return {
+    status: "active",
+    dayNumber,
+    totalDays: FESTIVAL_CONFIG.totalDays,
+    pill: `Day ${dayNumber} of ${FESTIVAL_CONFIG.totalDays}`,
+    banner: `🪔 Ganeshotsav • Day ${dayNumber} of ${FESTIVAL_CONFIG.totalDays} · Pune Active`,
+    startDateFormatted: "Sep 14",
+    endDateFormatted: "Sep 25",
+  };
 }

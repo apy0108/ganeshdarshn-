@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Authoritative crowd state: public read for all devotees worldwide; client direct write denied
+    match /crowd_state/{mandalId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 2. Raw crowd reports & wait-time submissions: direct client access denied
+    // Processed and written strictly through Next.js server API validation
+    match /crowd_reports/{reportId} {
+      allow read, write: if false;
+    }
+
+    // 3. Passive dwell signals: direct client access denied
+    match /dwell_signals/{signalId} {
+      allow read, write: if false;
+    }
+
+    // 4. Server-side analytics events: direct client access denied
+    match /analytics_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // 5. Default catch-all: deny all client read and write operations
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

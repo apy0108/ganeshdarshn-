@@ -1,51 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Download, X, Sparkles, Smartphone } from "lucide-react";
+import { Download, X } from "lucide-react";
 import GanpatiIcon from "./GanpatiIcon";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function PWAInstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showBanner, setShowBanner] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // Do NOT show banner if already running in standalone PWA mode
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
-
-    if (isStandalone) return;
-
-    try {
-      const dismissed = localStorage.getItem("pg.pwa_dismissed");
-      if (dismissed) return;
-
-      const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10) + 1;
-      localStorage.setItem("pg.visits", visits.toString());
-
-      if (visits >= 2) {
-        setShowBanner(true);
-      }
-    } catch {}
-
-    const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      const dismissed = localStorage.getItem("pg.pwa_dismissed");
-      const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10);
-      if (!dismissed && visits >= 2) {
-        setShowBanner(true);
-      }
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-    };
-  }, []);
+  const { t } = useLanguage();
 
   const handleInstall = async () => {
     try {
@@ -60,10 +23,53 @@ export default function PWAInstallBanner() {
       }
       setDeferredPrompt(null);
     } else {
-      alert("Tap your browser's share or menu button (⋮ / ⎙) and select 'Add to Home Screen'!");
+      alert(t("pwa_install_instructions"));
       setShowBanner(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Do NOT show banner if already running in standalone PWA mode
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+
+    if (isStandalone) return;
+
+    try {
+      const dismissed = localStorage.getItem("pg.pwa_dismissed");
+      const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10) + 1;
+      localStorage.setItem("pg.visits", visits.toString());
+
+      if (!dismissed && visits >= 2) {
+        setShowBanner(true);
+      }
+    } catch {}
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      const dismissed = localStorage.getItem("pg.pwa_dismissed");
+      const visits = parseInt(localStorage.getItem("pg.visits") || "0", 10);
+      if (!dismissed && visits >= 2) {
+        setShowBanner(true);
+      }
+    };
+
+    const handleTriggerInstall = () => {
+      handleInstall();
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("trigger-pwa-install", handleTriggerInstall);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("trigger-pwa-install", handleTriggerInstall);
+    };
+  }, [deferredPrompt, t]);
 
   const handleDismiss = () => {
     setShowBanner(false);
@@ -83,13 +89,13 @@ export default function PWAInstallBanner() {
           </div>
           <div>
             <div className="flex items-center gap-1.5 text-xs font-extrabold font-baloo text-white">
-              <span>Install Ganpati Darshan</span>
+              <span>{t("pwa_banner_title")}</span>
               <span className="px-1.5 py-0.2 rounded-full bg-orange-500/30 text-[10px] text-orange-300">
-                PWA App
+                {t("pwa_badge")}
               </span>
             </div>
             <p className="text-[11px] font-baloo text-orange-200/80">
-              Fast, offline queues & maps on your home screen.
+              {t("pwa_banner_desc")}
             </p>
           </div>
         </div>
@@ -101,7 +107,7 @@ export default function PWAInstallBanner() {
             className="h-8 px-3 rounded-full bg-[var(--accent)] hover:bg-orange-600 text-white text-xs font-extrabold font-baloo flex items-center gap-1 active:scale-95 transition-all shadow"
           >
             <Download size={13} />
-            Add
+            {t("pwa_banner_btn")}
           </button>
 
           <button

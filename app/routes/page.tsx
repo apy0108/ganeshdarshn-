@@ -202,7 +202,7 @@ export default function RoutesPage() {
               <div className="pt-2.5 border-t border-[var(--border)] flex items-center justify-between text-xs font-bold font-baloo text-[var(--muted)]">
                 <span>{distKm} km walk</span>
                 <span>•</span>
-                <span>Live queue: {liveMinutes}m total</span>
+                <span>Est. duration: {timeStr}</span>
                 <span>•</span>
                 <span className="text-[var(--accent)] font-extrabold">View route →</span>
               </div>

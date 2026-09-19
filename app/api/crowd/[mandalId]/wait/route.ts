@@ -8,7 +8,7 @@ export async function POST(
   try {
     const mandalId = params.mandalId;
     const body = await req.json();
-    const { deviceId, minutes, requestId } = body;
+    const { deviceId, minutes, requestId, lat, lng, accuracyM, coords } = body;
 
     if (!deviceId || typeof deviceId !== "string" || deviceId.trim() === "") {
       return NextResponse.json(
@@ -29,6 +29,11 @@ export async function POST(
       );
     }
 
+    // Resolve submitted GPS coordinates
+    const reportCoords = coords || (typeof lat === "number" && typeof lng === "number"
+      ? { lat, lng, accuracyM }
+      : undefined);
+
     const waitRequestId =
       requestId || `wait_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -37,11 +42,12 @@ export async function POST(
       minutes: numMinutes,
       deviceId,
       requestId: waitRequestId,
+      coords: reportCoords,
     });
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: result.reason },
+        { success: false, error: result.reason || "Validation failed" },
         { status: 400 }
       );
     }

@@ -64,8 +64,13 @@ export default function ExplorePage() {
     } catch {
       setSavedIds([]);
     }
+    fetch("/api/crowd")
+      .then((res) => res.json())
+      .then((data) => setCrowdData((prev) => ({ ...prev, ...(data || {}) })))
+      .catch(() => {});
+
     const unsubscribe = subscribeToLiveCrowd((data) => {
-      setCrowdData(data || {});
+      setCrowdData((prev) => ({ ...prev, ...(data || {}) }));
     });
     return () => unsubscribe();
   }, []);

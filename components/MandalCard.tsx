@@ -3,15 +3,18 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, MapPin } from "lucide-react";
+import { Plus, Check, Heart, MapPin } from "lucide-react";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
 import CrowdBadge from "./CrowdBadge";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface MandalCardProps {
   mandal: Mandal;
   crowd?: LiveCrowd;
   badgePosition?: "content-top" | "photo-top-right";
   className?: string;
+  actionVariant?: "heart" | "add-button";
+  onToggleAdd?: (mandal: Mandal, isAdded: boolean) => void;
 }
 
 export default function MandalCard({
@@ -19,9 +22,12 @@ export default function MandalCard({
   crowd,
   badgePosition = "content-top",
   className = "",
+  actionVariant = "heart",
+  onToggleAdd,
 }: MandalCardProps) {
   const [imageError, setImageError] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const { t } = useLanguage();
 
   // Sync saved state with localStorage
   useEffect(() => {
@@ -41,15 +47,26 @@ export default function MandalCard({
         localStorage.getItem("saved_mandals") || "[]"
       );
       let updated: string[];
+      let nextState = false;
       if (savedList.includes(mandal.id)) {
         updated = savedList.filter((id) => id !== mandal.id);
         setIsSaved(false);
+        nextState = false;
       } else {
         updated = [...savedList, mandal.id];
         setIsSaved(true);
+        nextState = true;
       }
       localStorage.setItem("saved_mandals", JSON.stringify(updated));
       window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(
+        new CustomEvent("mandal-plan-update", {
+          detail: { mandal, isAdded: nextState },
+        })
+      );
+      if (onToggleAdd) {
+        onToggleAdd(mandal, nextState);
+      }
     } catch {
       setIsSaved(!isSaved);
     }
@@ -60,12 +77,12 @@ export default function MandalCard({
 
   return (
     <Link
-      href={`/mandal/${mandal.id}`}
+      href={`/ganpati/${mandal.id}`}
       className={`group block rounded-[20px] overflow-hidden border-[1.5px] border-[var(--border)] bg-[var(--card-bg)] active:scale-[0.98] transition-transform duration-150 ${className}`}
       style={{ boxShadow: "none" }}
     >
-      {/* Photo area: 160px tall, full width, object-fit: cover */}
-      <div className="relative w-full h-[160px] bg-[#FFF0E6] overflow-hidden flex items-center justify-center">
+      {/* Photo area: 155px tall, full width, object-fit: cover */}
+      <div className="relative w-full h-[155px] bg-[#FFF0E6] overflow-hidden flex items-center justify-center">
         {mandal.imageUrl && !imageError ? (
           <Image
             src={mandal.imageUrl}
@@ -120,24 +137,49 @@ export default function MandalCard({
           {mandal.area}
         </div>
 
-        {/* Bottom row: Distance badge + Heart icon */}
+        {/* Bottom row: Distance / Area + Action (Heart or + Add button) */}
         <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xs text-[var(--muted)] font-medium">
-            <MapPin size={13} className="text-[var(--accent)]" />
-            <span>{mandal.area}</span>
+          <div className="flex items-center gap-1 text-xs text-[var(--muted)] font-medium truncate max-w-[55%]">
+            <MapPin size={13} className="text-[var(--accent)] flex-shrink-0" />
+            <span className="truncate">{mandal.area}</span>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleSave}
-            className="tap-target -m-2 p-2 flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
-            aria-label={isSaved ? "Remove from saved" : "Save mandal"}
-          >
-            <Heart
-              size={18}
-              className={isSaved ? "fill-[var(--accent)] text-[var(--accent)]" : ""}
-            />
-          </button>
+          {actionVariant === "add-button" ? (
+            <button
+              type="button"
+              onClick={toggleSave}
+              className={`tap-target px-3 py-1.5 rounded-full text-xs font-extrabold font-baloo flex items-center gap-1 active:scale-95 transition-all ${
+                isSaved
+                  ? "bg-[var(--accent-bg)] text-[var(--accent)] border border-orange-300"
+                  : "bg-[var(--accent)] text-white hover:bg-orange-600 shadow-sm"
+              }`}
+              aria-label={isSaved ? "Remove from Darshan" : "Add to Darshan"}
+            >
+              {isSaved ? (
+                <>
+                  <Check size={13} className="stroke-[3]" />
+                  <span>{t("added_btn")}</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={13} className="stroke-[3]" />
+                  <span>{t("add_btn")}</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleSave}
+              className="tap-target -m-2 p-2 flex items-center justify-center text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+              aria-label={isSaved ? "Remove from saved" : "Save mandal"}
+            >
+              <Heart
+                size={18}
+                className={isSaved ? "fill-[var(--accent)] text-[var(--accent)]" : ""}
+              />
+            </button>
+          )}
         </div>
       </div>
     </Link>

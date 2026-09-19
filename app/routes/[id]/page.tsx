@@ -207,7 +207,7 @@ export default function RouteDetailPage() {
             <div className="text-xl font-extrabold font-baloo text-[var(--accent)]">
               {totalDurationStr}
             </div>
-            <div className="text-[11px] font-baloo text-[var(--muted)]">Live Est. Time</div>
+            <div className="text-[11px] font-baloo text-[var(--muted)]">Est. Total Time</div>
           </div>
 
           <div className="w-[1px] h-8 bg-[var(--border)]" />
@@ -249,7 +249,7 @@ export default function RouteDetailPage() {
             Stops in Visit Order ({mandalStops.length})
           </h3>
           <span className="text-[11px] font-baloo text-[var(--muted)]">
-            Live queue wait times
+            Live crowd & wait times
           </span>
         </div>
 

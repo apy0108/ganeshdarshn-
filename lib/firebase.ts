@@ -30,9 +30,12 @@ if (isConfigured) {
 
 export { app, db, rtdb, isConfigured };
 
+const EXPIRY_MS = 90 * 60 * 1000; // 90 minutes
+
 /**
- * Real-time subscription to crowd status.
+ * Real-time subscription to authoritative crowd state.
  * If Firebase is not configured or empty, returns an empty map cleanly.
+ * Expired reports (>90 min) are dynamically returned as status: 'none'.
  */
 export function subscribeToLiveCrowd(
   onUpdate: (crowdMap: Record<string, LiveCrowd>) => void
@@ -42,16 +45,43 @@ export function subscribeToLiveCrowd(
     return () => {};
   }
 
-  // 1. Try Realtime Database first if available
+  // 1. Try Realtime Database first if configured
   if (rtdb) {
     try {
-      const crowdRef = ref(rtdb, "live_crowd");
+      const crowdRef = ref(rtdb, "crowd_state");
       const unsubscribe = onValue(
         crowdRef,
         (snapshot) => {
           if (snapshot.exists()) {
-            const data = snapshot.val() as Record<string, LiveCrowd>;
-            onUpdate(data || {});
+            const rawData = snapshot.val() as Record<string, any>;
+            const now = Date.now();
+            const crowdMap: Record<string, LiveCrowd> = {};
+
+            Object.entries(rawData || {}).forEach(([mandalId, data]) => {
+              const lastReportAt = typeof data.lastReportAt === "number" ? data.lastReportAt : 0;
+              const isExpired = lastReportAt > 0 && now - lastReportAt > EXPIRY_MS;
+
+              if (isExpired || data.status === "none" || !data.status) {
+                crowdMap[mandalId] = {
+                  mandalId,
+                  status: "none",
+                  reportedAt: 0,
+                  reportCount: 0,
+                  isEstimated: false,
+                };
+              } else {
+                crowdMap[mandalId] = {
+                  mandalId,
+                  status: data.status,
+                  reportedAt: lastReportAt,
+                  reportCount: data.reportCount || 0,
+                  waitMinutes: data.waitMinutes,
+                  isEstimated: Boolean(data.isEstimated),
+                };
+              }
+            });
+
+            onUpdate(crowdMap);
           } else {
             onUpdate({});
           }
@@ -67,24 +97,47 @@ export function subscribeToLiveCrowd(
     }
   }
 
-  // 2. Fallback to Firestore listener if RTDB is not configured
+  // 2. Fallback to Firestore listener
   if (db) {
     try {
-      const crowdCollection = collection(db, "live_crowd");
+      const crowdCollection = collection(db, "crowd_state");
       const unsubscribe = onSnapshot(
         crowdCollection,
         (snapshot) => {
+          const now = Date.now();
           const crowdMap: Record<string, LiveCrowd> = {};
+
           snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as LiveCrowd;
-            crowdMap[docSnap.id] = {
-              mandalId: docSnap.id,
-              status: data.status || 'none',
-              reportedAt: data.reportedAt || 0,
-              reportCount: data.reportCount || 0,
-              waitMinutes: data.waitMinutes,
-            };
+            const data = docSnap.data();
+            const lastReportAt =
+              data.lastReportAt && typeof data.lastReportAt.toMillis === "function"
+                ? data.lastReportAt.toMillis()
+                : typeof data.lastReportAt === "number"
+                ? data.lastReportAt
+                : 0;
+
+            const isExpired = lastReportAt > 0 && now - lastReportAt > EXPIRY_MS;
+
+            if (isExpired || data.status === "none" || !data.status) {
+              crowdMap[docSnap.id] = {
+                mandalId: docSnap.id,
+                status: "none",
+                reportedAt: 0,
+                reportCount: 0,
+                isEstimated: false,
+              };
+            } else {
+              crowdMap[docSnap.id] = {
+                mandalId: docSnap.id,
+                status: data.status,
+                reportedAt: lastReportAt,
+                reportCount: data.reportCount || 0,
+                waitMinutes: data.waitMinutes,
+                isEstimated: Boolean(data.isEstimated),
+              };
+            }
           });
+
           onUpdate(crowdMap);
         },
         (error) => {

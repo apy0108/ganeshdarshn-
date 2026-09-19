@@ -76,11 +76,14 @@ export default function CrowdReportButtons({
     return () => clearInterval(interval);
   }, [cooldownSeconds]);
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleReport = async (status: CrowdStatus) => {
     if (cooldownSeconds > 0 || isSubmitting) return;
 
     setIsSubmitting(true);
     setConfirmationMsg(null);
+    setErrorMessage(null);
     const deviceId = getDeviceId();
     const requestId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -92,7 +95,9 @@ export default function CrowdReportButtons({
           deviceId,
           status,
           requestId,
-          atMandal,
+          lat: gpsState.status === "ready" ? gpsState.position.lat : undefined,
+          lng: gpsState.status === "ready" ? gpsState.position.lng : undefined,
+          accuracyM: gpsState.accuracyM,
         }),
       });
 
@@ -107,9 +112,12 @@ export default function CrowdReportButtons({
         }
       } else if (data.reason === "cooldown") {
         setCooldownSeconds(data.retryAfter || 1800);
+      } else {
+        setErrorMessage(data.error || "Could not submit report. Please try again within 1 km.");
       }
     } catch (err) {
       console.error("Failed to submit crowd report:", err);
+      setErrorMessage("Network error. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +155,13 @@ export default function CrowdReportButtons({
         <div className="p-3.5 rounded-[14px] bg-[#DCFCE7] border border-[#BBF7D0] text-[#166534] font-baloo font-bold text-sm flex items-center gap-2 animate-in fade-in shadow-sm">
           <CheckCircle2 size={18} className="flex-shrink-0" />
           <span>{confirmationMsg}</span>
+        </div>
+      )}
+
+      {/* Error message */}
+      {errorMessage && (
+        <div className="p-3.5 rounded-[14px] bg-red-50 border border-red-200 text-red-800 font-baloo font-bold text-xs flex items-center gap-2 animate-in fade-in shadow-sm">
+          <span>⚠️ {errorMessage}</span>
         </div>
       )}
 
