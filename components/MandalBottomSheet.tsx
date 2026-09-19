@@ -6,6 +6,7 @@ import Link from "next/link";
 import { X, Navigation, Eye, CheckCircle } from "lucide-react";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
 import CrowdBadge from "./CrowdBadge";
+import { formatMinutes } from "@/lib/curatedRoutes";
 
 interface MandalBottomSheetProps {
   mandal: Mandal | null;
@@ -69,7 +70,7 @@ export default function MandalBottomSheet({
               <CrowdBadge status={status} isEstimated={crowd?.isEstimated} size="md" />
               {crowd?.waitMinutes && !crowd.isEstimated ? (
                 <span className="text-xs font-bold text-[var(--muted)]">
-                  ~{crowd.waitMinutes} min wait
+                  ~{formatMinutes(crowd.waitMinutes)} wait
                 </span>
               ) : null}
             </div>

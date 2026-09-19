@@ -6,6 +6,7 @@ import { Bookmark, Heart, MapPin, Trash2, Footprints, Clock, ArrowRight, Sparkle
 import { MANDALS, getMandalById, haversine } from "@/lib/mandals";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
 import { subscribeToLiveCrowd } from "@/lib/firebase";
+import { formatMinutes } from "@/lib/curatedRoutes";
 import MandalCard from "@/components/MandalCard";
 import { CROWD_CONFIG } from "@/components/CrowdBadge";
 
@@ -128,7 +129,7 @@ export default function SavedPage() {
                 </span>
 
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold font-baloo">
-                  <Clock size={11} /> ~{planMinutesEstimate} min total
+                  <Clock size={11} /> ~{formatMinutes(planMinutesEstimate)} total
                 </span>
               </div>
 

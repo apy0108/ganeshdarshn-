@@ -288,7 +288,7 @@ export default function RouteDetailPage() {
                   <CrowdBadge status={st} isEstimated={crowd?.isEstimated} size="sm" />
                   {crowd?.waitMinutes && !crowd.isEstimated ? (
                     <span className="text-[10px] font-baloo text-[var(--muted)]">
-                      ~{crowd.waitMinutes}m wait
+                      ~{formatMinutes(crowd.waitMinutes)} wait
                     </span>
                   ) : null}
                 </div>

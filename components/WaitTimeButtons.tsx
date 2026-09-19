@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { getDeviceId } from "@/lib/deviceId";
+import { formatMinutes } from "@/lib/curatedRoutes";
 
 interface WaitTimeButtonsProps {
   mandalId: string;
@@ -18,6 +19,7 @@ const WAIT_OPTIONS = [
   { label: "45 min", minutes: 45 },
   { label: "1 hr", minutes: 60 },
   { label: "1.5 hr", minutes: 90 },
+  { label: "2 hr", minutes: 120 },
 ];
 
 export default function WaitTimeButtons({
@@ -104,7 +106,7 @@ export default function WaitTimeButtons({
       {submitted ? (
         <div className="p-3 rounded-[14px] bg-[#DCFCE7] border border-[#BBF7D0] text-[#166534] font-baloo font-bold text-xs flex items-center gap-2">
           <CheckCircle2 size={16} />
-          <span>Thanks! Recorded {selectedMinutes} min wait time.</span>
+          <span>Thanks! Recorded {formatMinutes(selectedMinutes || 0)} wait time.</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -114,7 +116,7 @@ export default function WaitTimeButtons({
             </div>
           )}
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             {WAIT_OPTIONS.map((opt) => {
               const isSelected = selectedMinutes === opt.minutes;
               return (
@@ -123,7 +125,7 @@ export default function WaitTimeButtons({
                   type="button"
                   disabled={isSubmitting}
                   onClick={() => handleSelectWait(opt.minutes)}
-                  className={`h-11 min-w-[68px] rounded-full text-xs font-extrabold font-baloo border transition-all tap-target flex items-center justify-center ${
+                  className={`h-11 rounded-full text-xs font-extrabold font-baloo border transition-all tap-target flex items-center justify-center ${
                     isSelected
                       ? "bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm"
                       : "bg-[var(--surface)] border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)] active:scale-95"

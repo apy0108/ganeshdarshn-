@@ -22,6 +22,7 @@ import {
 import dynamic from "next/dynamic";
 import { MANDALS, getMandalById, haversine } from "@/lib/mandals";
 import { Mandal, LiveCrowd, CrowdStatus } from "@/lib/types";
+import { formatMinutes } from "@/lib/curatedRoutes";
 import {
   RouteStop,
   buildRoute,
@@ -394,7 +395,7 @@ function PlanPageContent() {
 
             <div>
               <div className="text-xl font-extrabold font-baloo text-[var(--accent)]">
-                {totalStats.totalMinutes} min
+                {formatMinutes(totalStats.totalMinutes)}
               </div>
               <div className="text-[11px] font-baloo text-[var(--muted)]">Total Time</div>
             </div>
@@ -410,7 +411,7 @@ function PlanPageContent() {
           </div>
 
           <div className="text-center pt-2 border-t border-[var(--border)] text-[11px] font-baloo text-[var(--muted)]">
-            ~{totalStats.walkMinutes}m transit + ~{totalStats.dwellMinutes}m darshan & queues from live reports
+            ~{formatMinutes(totalStats.walkMinutes)} transit + ~{formatMinutes(totalStats.dwellMinutes)} darshan & queues from live reports
           </div>
         </div>
       </div>
@@ -602,7 +603,7 @@ function PlanPageContent() {
                     <CrowdBadge status={st} isEstimated={crowd?.isEstimated} size="sm" />
                     {crowd?.waitMinutes && !crowd.isEstimated ? (
                       <span className="text-[10px] font-baloo text-[var(--muted)]">
-                        ~{crowd.waitMinutes}m wait
+                        ~{formatMinutes(crowd.waitMinutes)} wait
                       </span>
                     ) : null}
                   </div>

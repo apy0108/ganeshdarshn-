@@ -27,6 +27,7 @@ import CrowdBadge, { CROWD_CONFIG } from "@/components/CrowdBadge";
 import CrowdReportButtons from "@/components/CrowdReportButtons";
 import WaitTimeButtons from "@/components/WaitTimeButtons";
 import GanpatiIcon from "@/components/GanpatiIcon";
+import { formatMinutes } from "@/lib/curatedRoutes";
 
 // Open Google Maps directions for a single mandal
 function openDirections(mandal: Mandal) {
@@ -178,7 +179,7 @@ export default function MandalDetailPage() {
 
   const handleShare = async () => {
     const queueLabel = currentConfig.label.replace(/^([✓~!]\s|\?\s)/, "");
-    const shareText = `Check out ${mandal.name} on Ganpati Darshan — ${queueLabel} queue (${waitMinutes ? `~${waitMinutes} min` : "flowing"})`;
+    const shareText = `Check out ${mandal.name} on Ganpati Darshan — ${queueLabel} queue (${waitMinutes ? `~${formatMinutes(waitMinutes)}` : "flowing"})`;
 
     if (navigator.share) {
       try {
@@ -419,7 +420,7 @@ export default function MandalDetailPage() {
 
           <div className="text-base font-bold font-baloo">
             {waitMinutes
-              ? `People waited about ${waitMinutes} min`
+              ? `People waited about ${formatMinutes(waitMinutes)}`
               : currentStatus === "short"
               ? "People waited about 5–10 min"
               : currentStatus === "moving"
