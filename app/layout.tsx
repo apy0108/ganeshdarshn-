@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Baloo_2, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
@@ -56,6 +57,11 @@ export default function RootLayout({
         </AppProviders>
         <Analytics />
         <SpeedInsights />
+        <Script
+          src="https://routeiq.duckdns.org/widget/widget.js"
+          data-bot-id="319c673d-65dd-4726-9001-b5504aafe44e"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
